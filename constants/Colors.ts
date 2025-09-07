@@ -1,26 +1,73 @@
 /**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
+ * Tiddle.io Color System
+ * Professional color palette optimized for both light and dark modes
  */
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
+// Primary brand colors
+const primaryLight = '#6366f1'; // Modern indigo
+const primaryDark = '#818cf8';  // Lighter indigo for dark mode
+
+// Additional brand colors
+const secondaryLight = '#f59e0b'; // Warm amber
+const secondaryDark = '#fbbf24';  // Lighter amber for dark mode
 
 export const Colors = {
   light: {
-    text: '#11181C',
-    background: '#fff',
-    tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
-    tabIconSelected: tintColorLight,
+    // Core colors
+    text: '#1f2937',          // Rich dark gray
+    textSecondary: '#6b7280', // Medium gray for secondary text
+    background: '#ffffff',    // Pure white
+    backgroundSecondary: '#f9fafb', // Light gray for cards/surfaces
+    
+    // Brand colors
+    tint: primaryLight,
+    secondary: secondaryLight,
+    
+    // UI colors
+    icon: '#6b7280',
+    iconSecondary: '#9ca3af',
+    tabIconDefault: '#9ca3af',
+    tabIconSelected: primaryLight,
+    
+    // Semantic colors
+    success: '#10b981',       // Green
+    warning: '#f59e0b',       // Amber
+    error: '#ef4444',         // Red
+    info: '#3b82f6',          // Blue
+    
+    // Surface colors
+    surface: '#ffffff',
+    surfaceSecondary: '#f3f4f6',
+    border: '#e5e7eb',
+    borderFocus: primaryLight,
   },
   dark: {
-    text: '#ECEDEE',
-    background: '#151718',
-    tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
-    tabIconSelected: tintColorDark,
+    // Core colors
+    text: '#f9fafb',          // Light gray
+    textSecondary: '#d1d5db', // Medium light gray
+    background: '#111827',    // Deep dark blue-gray
+    backgroundSecondary: '#1f2937', // Lighter dark gray
+    
+    // Brand colors
+    tint: primaryDark,
+    secondary: secondaryDark,
+    
+    // UI colors
+    icon: '#9ca3af',
+    iconSecondary: '#6b7280',
+    tabIconDefault: '#6b7280',
+    tabIconSelected: primaryDark,
+    
+    // Semantic colors
+    success: '#34d399',       // Lighter green
+    warning: '#fbbf24',       // Lighter amber
+    error: '#f87171',         // Lighter red
+    info: '#60a5fa',          // Lighter blue
+    
+    // Surface colors
+    surface: '#1f2937',
+    surfaceSecondary: '#374151',
+    border: '#374151',
+    borderFocus: primaryDark,
   },
 };

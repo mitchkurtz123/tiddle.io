@@ -142,7 +142,7 @@ export default function UsersScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 60, // Safe area padding
+    paddingTop: 80, // Increased safe area padding for better spacing
   },
   centerContainer: {
     flex: 1,

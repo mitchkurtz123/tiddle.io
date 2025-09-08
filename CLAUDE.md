@@ -10,6 +10,8 @@ This is **Tiddle.io**, a professional Expo React Native application with complet
 - **Protected Routes** - Authentication-gated navigation with automatic redirects
 - **Professional UI/UX** - Custom branded login screen with modern design system
 - **User Management** - Full user listing with profile images and pull-to-refresh
+- **Brand Deal Management** - Complete campaign workflow with instance tracking and creator management
+- **Real-time Data Sync** - React Query mutations with automatic cache invalidation
 - **Multi-Platform Support** - iOS, Android, and web with responsive design
 - **Modern Architecture** - TypeScript, React Query, and comprehensive error handling
 
@@ -37,10 +39,11 @@ The app uses Bubble.io as the backend service for authentication and user data m
 - `app/_layout.tsx` - Root layout with AuthProvider, QueryClient, and theme providers
 - `app/login.tsx` - Professional login screen with branded UI and form validation
 - `app/(tabs)/` - Protected tab navigation group (requires authentication)
-  - `index.tsx` - Home tab
+  - `index.tsx` - Home tab with brand deal list and campaign management
   - `explore.tsx` - Explore tab
   - `users.tsx` - Users management with profile images, pull-to-refresh, and logout
   - `_layout.tsx` - Tab layout with haptic feedback, blur effects, and user tab
+- `app/brand-deal/[id].tsx` - Dynamic brand deal detail screen with instance management
 - `app/+not-found.tsx` - 404 page
 
 ### Authentication Flow
@@ -53,10 +56,26 @@ The app uses Bubble.io as the backend service for authentication and user data m
   - UI primitives: `ThemedText`, `ThemedView`, `Collapsible`
   - Platform-specific: `HapticTab`, `ParallaxScrollView`
   - `ui/` - Platform-specific UI components (IconSymbol, TabBarBackground)
+  - `campaign/` - Campaign and brand deal components
+    - `CampaignCard.tsx` - Brand deal list item with navigation
+    - `CampaignHeader.tsx` - Campaign list header with filtering
+  - `brand-deal/` - Brand deal detail screen components
+    - `BrandDealHeader.tsx` - Campaign header with image, title, status, and navigation
+    - `InstanceCard.tsx` - Individual instance display with user data, pricing, and platform
+    - `InstanceList.tsx` - List component for displaying video instances
+    - `AddCreatorSheet.tsx` - Bottom sheet modal for adding creators with currency inputs
+  - `common/` - Common utility components
+    - `SearchBar.tsx` - Search input with clear functionality
+    - `EmptyState.tsx` - Empty state display component
 - `contexts/` - React Context providers for global state
   - `AuthContext.tsx` - Authentication state management with login/logout/token handling
 - `hooks/` - Custom React hooks for theme, authentication, and API data fetching
   - `useUsers.ts` - React Query hook for paginated user data from Bubble.io API
+  - `useBranddeals.ts` - React Query hook for brand deals list with filtering
+  - `useBranddeal.ts` - Single brand deal fetching with caching
+  - `useInstances.ts` - Instance data management for brand deal details
+  - `useUser.ts` - Individual user data fetching with profile information
+  - `useCreateInstance.ts` - Mutation hook for creating instances with cache invalidation
   - `useAuth.ts` - Authentication hook (exported from AuthContext)
   - `useThemeColor.ts` - Theme-aware color selection hook
 - `services/` - API clients and business logic services
@@ -120,10 +139,17 @@ The app uses a professional indigo/amber color scheme with automatic theme detec
 Complete backend integration with comprehensive error handling:
 - **API Client**: Located in `services/bubbleAPI.ts` with full TypeScript support
 - **Authentication Service**: `services/auth.ts` handles login/logout workflows
-- **Data Fetching**: Uses React Query via `useUsers` hook for caching and synchronization
+- **Data Fetching**: Uses React Query for caching and synchronization across multiple data types
 - **Auto-retry Logic**: Built-in retry logic for failed requests with exponential backoff
 - **Type Safety**: Complete TypeScript types for API responses and data models
 - **Error Normalization**: Consistent error handling across all API endpoints
+
+#### Data Types and Endpoints
+- **User Management**: `AppUser` type with profile images and authentication data
+- **Brand Deals**: `BrandDeal` type with status, images, and user associations
+- **Instances**: `Instance0963` type for video instances with creator details and pricing
+- **Object Endpoints**: `/user`, `/branddeal`, `/instance0963` for data retrieval
+- **Workflow Endpoints**: `/create-instance` for creating new video instances
 
 ### Data Fetching Patterns
 - **React Query Integration**: All API calls use TanStack Query for intelligent caching
@@ -140,8 +166,48 @@ Complete backend integration with comprehensive error handling:
 - **API Types**: Complete type definitions for Bubble.io API responses in `services/bubbleAPI.ts`
 - **Component Types**: Strongly typed props and state throughout all React components
 
+### Brand Deal Management System
+The app features a complete brand deal and campaign management workflow:
+
+#### Brand Deal List (Home Tab)
+- **Campaign Overview**: List of all brand deals with filtering by status (roster, waiting, in-progress, invoiced, complete, canceled)
+- **Search Functionality**: Real-time search across campaign titles and brand names
+- **Status-based Filtering**: Professional filter dropdown with color-coded status badges
+- **Pull-to-Refresh**: Native refresh controls with branded styling
+- **Navigation**: Tap any campaign to view detailed information
+
+#### Brand Deal Detail Screen (`/brand-deal/[id]`)
+- **Dynamic Routing**: File-based routing with brand deal ID parameter
+- **Campaign Header**: Large campaign image, title, brand name, status badge, and creator count
+- **Back Navigation**: Proper navigation with fallback to home screen
+- **Instance Management**: Complete list of video instances (creator submissions)
+- **Real-time Updates**: Automatic refresh after creating new instances
+
+#### Instance Management
+- **Instance Cards**: Display creator username, platform, pricing (rate vs price), and status
+- **User Data Integration**: Automatic fetching of creator profiles with avatars
+- **Platform Icons**: Visual indicators for TikTok, Instagram, YouTube
+- **Status Tracking**: Color-coded status badges for instance workflow stages
+
+#### Creator Addition Workflow
+- **Professional Form**: Bottom sheet modal with comprehensive input validation
+- **User Input**: Text field for username/user ID (expandable to user search in future)
+- **Platform Selection**: Toggle buttons for TikTok, Instagram, YouTube
+- **Currency Inputs**: Formatted rate and price fields with dollar signs and decimal validation
+- **Real-time Feedback**: Loading states, error handling, and immediate list updates
+
+#### Data Synchronization
+- **React Query Mutations**: Proper cache invalidation across all related queries
+- **Optimistic Updates**: Immediate UI feedback while API calls process
+- **Multi-layer Caching**: Invalidates instances, brand deals, and user queries
+- **Error Recovery**: Graceful error handling with retry capabilities
+
 ### User Interface Components
 - **UserAvatar**: Intelligent avatar component with image loading and fallback to initials
+- **CampaignCard**: Professional campaign list item with status badges and navigation
+- **InstanceCard**: Creator instance display with user data, pricing, and platform info
+- **AddCreatorSheet**: Bottom sheet modal with currency-formatted inputs and validation
+- **StatusBadges**: Color-coded status indicators with professional styling
 - **Professional Login**: Branded login screen with custom logo and theme integration
 - **Pull-to-Refresh**: Native refresh controls with loading states and error handling
 - **Theme-Aware**: All components automatically adapt to light/dark mode preferences

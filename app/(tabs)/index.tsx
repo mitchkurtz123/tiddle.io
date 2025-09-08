@@ -1,4 +1,4 @@
-import { ActivityIndicator, FlatList, StyleSheet, Image, RefreshControl, TouchableOpacity, Modal, Pressable, TextInput } from 'react-native';
+import { ActivityIndicator, FlatList, StyleSheet, RefreshControl, TouchableOpacity, Modal, Pressable } from 'react-native';
 import { useState } from 'react';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
@@ -6,126 +6,11 @@ import { useBranddeals } from '@/hooks/useBranddeals';
 import { useAuth } from '@/contexts/AuthContext';
 import { BrandDeal, BubbleThing } from '@/services/bubbleAPI';
 import { IconSymbol } from '@/components/ui/IconSymbol';
+import CampaignCard from '@/components/campaign/CampaignCard';
+import SearchBar from '@/components/common/SearchBar';
+import CampaignHeader from '@/components/campaign/CampaignHeader';
+import EmptyState from '@/components/common/EmptyState';
 
-// Component for branddeal image with fallback
-const BranddealImage = ({ branddeal }: { branddeal: BubbleThing & BrandDeal }) => {
-  const [imageError, setImageError] = useState(false);
-  
-  // Fix protocol-relative URLs (starting with //)
-  const getImageUrl = (url: string | undefined): string | null => {
-    if (!url) return null;
-    
-    // If URL starts with //, add https:
-    if (url.startsWith('//')) {
-      return `https:${url}`;
-    }
-    
-    return url;
-  };
-  
-  const imageUrl = getImageUrl(branddeal.image);
-  
-  if (imageUrl && !imageError) {
-    return (
-      <Image
-        source={{ uri: imageUrl }}
-        style={styles.branddealImage}
-        onError={() => setImageError(true)}
-      />
-    );
-  }
-  
-  // Fallback placeholder
-  return (
-    <ThemedView style={styles.imagePlaceholder}>
-      <ThemedText type="defaultSemiBold" style={styles.placeholderText}>
-        {(branddeal.title ?? "BD").charAt(0).toUpperCase()}
-      </ThemedText>
-    </ThemedView>
-  );
-};
-
-// Component for user count display
-const UserCount = ({ userList }: { userList?: string[] }) => {
-  const count = userList?.length || 0;
-  
-  // Always show for debugging - we can see if it's a data or display issue
-  return (
-    <ThemedView style={styles.userCount}>
-      <IconSymbol size={14} name="person.fill" color="#666" />
-      <ThemedText style={styles.userCountText}>{count}</ThemedText>
-    </ThemedView>
-  );
-};
-
-// Component for professional status badge
-const StatusBadge = ({ status }: { status?: string }) => {
-  if (!status) return null;
-  
-  const getStatusStyle = (status: string) => {
-    // Professional color palette with refined tones
-    switch (status.toLowerCase()) {
-      case 'roster':
-        return {
-          backgroundColor: 'rgba(107, 114, 128, 0.1)', // Subtle gray
-          borderColor: 'rgba(107, 114, 128, 0.3)',
-          textColor: '#374151'
-        };
-      case 'waiting':
-        return {
-          backgroundColor: 'rgba(245, 158, 11, 0.1)', // Warm amber
-          borderColor: 'rgba(245, 158, 11, 0.3)',
-          textColor: '#92400e'
-        };
-      case 'in progress':
-        return {
-          backgroundColor: 'rgba(99, 102, 241, 0.1)', // Professional indigo
-          borderColor: 'rgba(99, 102, 241, 0.3)',
-          textColor: '#3730a3'
-        };
-      case 'invoiced':
-        return {
-          backgroundColor: 'rgba(139, 92, 246, 0.1)', // Sophisticated purple
-          borderColor: 'rgba(139, 92, 246, 0.3)',
-          textColor: '#5b21b6'
-        };
-      case 'complete':
-        return {
-          backgroundColor: 'rgba(34, 197, 94, 0.1)', // Success green
-          borderColor: 'rgba(34, 197, 94, 0.3)',
-          textColor: '#166534'
-        };
-      case 'canceled':
-        return {
-          backgroundColor: 'rgba(239, 68, 68, 0.1)', // Muted red
-          borderColor: 'rgba(239, 68, 68, 0.3)',
-          textColor: '#991b1b'
-        };
-      default:
-        return {
-          backgroundColor: 'rgba(107, 114, 128, 0.1)',
-          borderColor: 'rgba(107, 114, 128, 0.3)',
-          textColor: '#374151'
-        };
-    }
-  };
-  
-  const statusStyle = getStatusStyle(status);
-  
-  return (
-    <ThemedView style={[
-      styles.statusBadge, 
-      { 
-        backgroundColor: statusStyle.backgroundColor,
-        borderColor: statusStyle.borderColor,
-      }
-    ]}>
-      <ThemedText style={[styles.statusText, { color: statusStyle.textColor }]}>
-        {status}
-      </ThemedText>
-    </ThemedView>
-  );
-};
 
 // Filter options
 type FilterOption = 'all' | 'roster' | 'waiting' | 'in-progress' | 'invoiced' | 'complete' | 'canceled';
@@ -254,22 +139,12 @@ export default function HomeScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <ThemedView style={styles.header}>
-        <ThemedView style={styles.headerLeft}>
-          <ThemedText type="title">My Campaigns</ThemedText>
-          <ThemedText type="subtitle" lightColor="#666" darkColor="#999">
-            {getCountText()}
-          </ThemedText>
-        </ThemedView>
-        
-        <TouchableOpacity style={styles.filterButton} onPress={() => setDropdownVisible(true)}>
-          <IconSymbol size={16} name="line.3.horizontal.decrease.circle" color="#6366f1" />
-          <ThemedText style={styles.filterText}>
-            {getFilterDisplayName(filterBy)}
-          </ThemedText>
-          <IconSymbol size={12} name="chevron.down" color="#6366f1" />
-        </TouchableOpacity>
-      </ThemedView>
+      <CampaignHeader
+        title="My Campaigns"
+        count={getCountText()}
+        filterDisplayName={getFilterDisplayName(filterBy)}
+        onFilterPress={() => setDropdownVisible(true)}
+      />
 
       {/* Filter Dropdown Modal */}
       <Modal
@@ -305,36 +180,22 @@ export default function HomeScreen() {
       </Modal>
 
       {/* Search Bar */}
-      <ThemedView style={styles.searchContainer}>
-        <ThemedView style={styles.searchBar}>
-          <IconSymbol size={20} name="magnifyingglass" color="#666" />
-          <TextInput
-            style={styles.searchInput}
-            placeholder={getSearchPlaceholder()}
-            placeholderTextColor="#999"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={clearSearch} style={styles.clearButton}>
-              <IconSymbol size={18} name="xmark.circle.fill" color="#999" />
-            </TouchableOpacity>
-          )}
-        </ThemedView>
-      </ThemedView>
+      <SearchBar
+        value={searchQuery}
+        onChangeText={setSearchQuery}
+        placeholder={getSearchPlaceholder()}
+        onClear={clearSearch}
+      />
       
       {filteredData.length === 0 ? (
-        <ThemedView style={styles.emptyContainer}>
-          <ThemedText type="subtitle" style={styles.emptyTitle}>
-            {isSearching ? 'No matching campaigns' : 'No campaigns yet'}
-          </ThemedText>
-          <ThemedText style={styles.emptyText}>
-            {isSearching 
+        <EmptyState
+          title={isSearching ? 'No matching campaigns' : 'No campaigns yet'}
+          message={
+            isSearching 
               ? `No campaigns match "${searchQuery}" in ${getFilterDisplayName(filterBy).toLowerCase()} status.`
               : 'Your campaigns will appear here once you create them.'
-            }
-          </ThemedText>
-        </ThemedView>
+          }
+        />
       ) : (
         <FlatList
           data={filteredData}
@@ -350,23 +211,7 @@ export default function HomeScreen() {
             />
           }
           renderItem={({ item }) => (
-            <ThemedView style={styles.branddealCard}>
-              <BranddealImage branddeal={item} />
-              <ThemedView style={styles.branddealInfo}>
-                <ThemedView style={styles.titleRow}>
-                  <ThemedText type="defaultSemiBold" style={styles.title}>
-                    {item.title ?? "(untitled)"}
-                  </ThemedText>
-                  <StatusBadge status={item["kaban-status"]} />
-                </ThemedView>
-                <ThemedView style={styles.bottomRow}>
-                  <ThemedText style={styles.subtitle}>
-                    {item.brandname || 'Brand'}
-                  </ThemedText>
-                  <UserCount userList={item["user-list"]} />
-                </ThemedView>
-              </ThemedView>
-            </ThemedView>
+            <CampaignCard item={item} />
           )}
         />
       )}
@@ -377,39 +222,13 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 60, // Safe area padding
+    paddingTop: 80, // Increased safe area padding for better spacing
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-    gap: 16,
-  },
-  headerLeft: {
-    flex: 1,
-  },
-  filterButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: 'rgba(99, 102, 241, 0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(99, 102, 241, 0.3)',
-  },
-  filterText: {
-    color: '#6366f1',
-    fontSize: 12,
-    fontWeight: '500',
   },
   modalOverlay: {
     flex: 1,
@@ -461,137 +280,8 @@ const styles = StyleSheet.create({
   errorText: {
     textAlign: 'center',
   },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 40,
-  },
-  emptyTitle: {
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  emptyText: {
-    textAlign: 'center',
-    opacity: 0.7,
-    lineHeight: 22,
-  },
   listContainer: {
     paddingHorizontal: 20,
     paddingBottom: 20,
-  },
-  branddealCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    marginBottom: 12,
-    borderRadius: 12,
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.08)',
-  },
-  branddealImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 8,
-    marginRight: 16,
-  },
-  imagePlaceholder: {
-    width: 60,
-    height: 60,
-    borderRadius: 8,
-    backgroundColor: '#6366f1',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  placeholderText: {
-    color: 'white',
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  branddealInfo: {
-    flex: 1,
-    gap: 4,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 8,
-  },
-  title: {
-    fontSize: 17,
-    lineHeight: 22,
-    flex: 1,
-  },
-  bottomRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 2,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#6366f1', // Purple color matching tab icons
-    fontWeight: '500',
-  },
-  userCount: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  userCountText: {
-    fontSize: 12,
-    color: '#666',
-    fontWeight: '500',
-  },
-  statusBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 0,
-    borderRadius: 4,
-    alignSelf: 'flex-start',
-    borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  statusText: {
-    fontSize: 9,
-    fontWeight: '600',
-    letterSpacing: 0.3,
-    textTransform: 'capitalize',
-    lineHeight: 16, // Tight line height to reduce vertical space
-    includeFontPadding: false, // Android: removes extra font padding
-    textAlignVertical: 'center', // Android: center text vertically
-  },
-  searchContainer: {
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-  },
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.1)',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 12,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-    color: '#333',
-    paddingVertical: 0, // Remove default padding on iOS
-  },
-  clearButton: {
-    padding: 2,
   },
 });

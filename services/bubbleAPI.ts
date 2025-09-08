@@ -11,6 +11,10 @@ const BASE_URL =
   process.env.EXPO_PUBLIC_BUBBLE_BASE_URL ??
   "https://tiddlecampaigns.com/version-test/api/1.1/obj";
 
+const WF_BASE =
+  process.env.EXPO_PUBLIC_BUBBLE_WF_BASE ??
+  "https://tiddlecampaigns.com/version-test/api/1.1/wf";
+
 /** Core Bubble list/thing shapes */
 export type BubbleThing = { _id: string; CreatedDate?: string; ModifiedDate?: string };
 
@@ -47,6 +51,17 @@ export type BrandDeal = {
   brandname?: string; // Denormalized brand name for instant display
   "user-list"?: string[]; // Array of user IDs associated with this branddeal
   // add more fields as needed from your Bubble branddeal datatype
+};
+
+/** Instance0963 shape for individual video instances created by creators */
+export type Instance0963 = {
+  username?: string; // Creator's username
+  price?: number; // Price for this instance
+  rate?: number; // Rate/pricing rate
+  platform?: string; // Platform where video will be posted (e.g., TikTok, Instagram)
+  "instance-status"?: string; // Status of this specific instance
+  user?: string; // User ID reference to get full user details
+  // add more fields as needed from your Bubble instance0963 datatype
 };
 
 /** Axios client with dynamic Bearer token from SecureStore */
@@ -228,6 +243,138 @@ export async function getBranddealById(id: string): Promise<BubbleThing & BrandD
     const res = await bubbleClient.get<BubbleGetResponse<BrandDeal>>(`/branddeal/${id}`);
     return res.data.response;
   } catch (e) {
+    throw normalizeBubbleError(e);
+  }
+}
+
+/** ===== INSTANCES: fetch instance0963 objects for a brand deal ===== */
+
+/**
+ * List instances (instance0963 objects) by providing an array of instance IDs.
+ * This fetches the instances from a brand deal's user-list field directly by ID.
+ */
+export async function listInstances(
+  instanceIds: string[]
+): Promise<{
+  results: (BubbleThing & Instance0963)[];
+  cursor: number;
+  remaining: number;
+  count: number;
+}> {
+  try {
+    console.log('listInstances called with instanceIds:', instanceIds);
+    
+    // If no instance IDs provided, return empty results
+    if (!instanceIds || instanceIds.length === 0) {
+      console.log('No instance IDs provided, returning empty results');
+      return {
+        results: [],
+        cursor: 0,
+        remaining: 0,
+        count: 0,
+      };
+    }
+
+    // Create simple axios instance (no headers, no auth - matches Postman)
+    const simpleClient = axios.create({
+      baseURL: BASE_URL,
+      timeout: 15000,
+      // No headers at all - just like Postman
+    });
+    
+    // Fetch each instance by ID directly
+    console.log('Fetching instances by IDs...');
+    const instancePromises = instanceIds.map(id => 
+      simpleClient.get<BubbleGetResponse<Instance0963>>(`/instance0963/${id}`)
+        .then(res => res.data.response)
+        .catch(err => {
+          console.error(`Failed to fetch instance ${id}:`, err);
+          return null; // Return null for failed fetches
+        })
+    );
+    
+    const instances = await Promise.all(instancePromises);
+    
+    // Filter out null results (failed fetches)
+    const validInstances = instances.filter((instance): instance is BubbleThing & Instance0963 => 
+      instance !== null
+    );
+    
+    console.log('Successfully fetched instances:', validInstances);
+    
+    return {
+      results: validInstances,
+      cursor: 0,
+      remaining: 0,
+      count: validInstances.length,
+    };
+  } catch (e) {
+    console.error('Error in listInstances:', e);
+    throw normalizeBubbleError(e);
+  }
+}
+
+/** Convenience helper if you only care about the array (no pagination meta) */
+export async function listInstancesSimple(userIds: string[]) {
+  const { results } = await listInstances(userIds);
+  return results;
+}
+
+/** Get a single instance by Bubble unique id */
+export async function getInstanceById(id: string): Promise<BubbleThing & Instance0963> {
+  try {
+    const res = await bubbleClient.get<BubbleGetResponse<Instance0963>>(`/instance0963/${id}`);
+    return res.data.response;
+  } catch (e) {
+    throw normalizeBubbleError(e);
+  }
+}
+
+/** ===== CREATE INSTANCE: workflow endpoint for creating new instances ===== */
+
+/**
+ * Create a new instance using the workflow endpoint
+ */
+export async function createInstance({
+  username,
+  rate,
+  price,
+  platform,
+  branddeal,
+}: {
+  username: string;
+  rate: number;
+  price: number;
+  platform: string;
+  branddeal: string;
+}): Promise<any> {
+  try {
+    console.log('Creating instance with data:', {
+      username,
+      rate,
+      price,
+      platform,
+      branddeal,
+    });
+
+    // Create simple axios instance (no headers, no auth)
+    const simpleClient = axios.create({
+      baseURL: WF_BASE,
+      timeout: 15000,
+    });
+
+    const res = await simpleClient.post('/create-instance', {
+      username,
+      rate,
+      price,
+      platform,
+      branddeal,
+    });
+
+    console.log('Instance created successfully:', res.data);
+    return res.data;
+  } catch (e) {
+    console.error('Error creating instance:', e);
     throw normalizeBubbleError(e);
   }
 }

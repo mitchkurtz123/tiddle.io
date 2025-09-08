@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { StyleSheet, ActivityIndicator, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
+import React, { useState, useRef } from 'react';
+import { StyleSheet, ActivityIndicator, ScrollView, RefreshControl, TouchableOpacity, Modal, Pressable, TextInput } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
@@ -12,13 +12,99 @@ import BrandDealHeader from '@/components/brand-deal/BrandDealHeader';
 import InstanceList from '@/components/brand-deal/InstanceList';
 import EmptyState from '@/components/common/EmptyState';
 import AddCreatorSheet from '@/components/brand-deal/AddCreatorSheet';
+import SearchBar from '@/components/common/SearchBar';
 import { BubbleThing, Instance0963 } from '@/services/bubbleAPI';
+
+// Filter options for instances
+type InstanceFilterOption = 'all' | 'none' | 'waiting-for-product' | 'no-submission' | 'brand-review' | 'revising' | 'ready-to-post' | 'posted' | 'invoice-pending' | 'paid';
+
+// Filter and sort logic for instances
+const filterAndSortInstances = (instances: (BubbleThing & Instance0963)[], filterBy: InstanceFilterOption, searchQuery: string = '') => {
+  let filtered = [...instances];
+  
+  // Filter by status first
+  if (filterBy !== 'all') {
+    const filterStatus = filterBy === 'waiting-for-product' ? 'Waiting for Product' 
+      : filterBy === 'no-submission' ? 'No Submission'
+      : filterBy === 'brand-review' ? 'Brand Review'
+      : filterBy === 'ready-to-post' ? 'Ready to Post'
+      : filterBy === 'invoice-pending' ? 'Invoice Pending'
+      : filterBy.charAt(0).toUpperCase() + filterBy.slice(1).replace('-', ' ');
+    
+    filtered = filtered.filter(item => 
+      item["instance-status"]?.toLowerCase() === filterStatus.toLowerCase()
+    );
+  }
+  
+  // Then filter by search query (within the status-filtered results)
+  if (searchQuery.trim()) {
+    const query = searchQuery.toLowerCase().trim();
+    filtered = filtered.filter(item => {
+      const usernameMatch = item.username?.toLowerCase().includes(query);
+      const platformMatch = item.platform?.toLowerCase().includes(query);
+      
+      // Debug logging to help identify issues
+      if (searchQuery.length > 0) {
+        console.log('Search debug:', {
+          query,
+          username: item.username,
+          platform: item.platform,
+          usernameMatch,
+          platformMatch
+        });
+      }
+      
+      return usernameMatch || platformMatch;
+    });
+  }
+  
+  // Sort by workflow order (natural instance progression)
+  const statusOrder = {
+    'none': 1, 'waiting for product': 2, 'no submission': 3,
+    'brand review': 4, 'revising': 5, 'ready to post': 6,
+    'posted': 7, 'invoice pending': 8, 'paid': 9
+  };
+  
+  return filtered.sort((a, b) => {
+    const aStatus = a["instance-status"]?.toLowerCase() || '';
+    const bStatus = b["instance-status"]?.toLowerCase() || '';
+    const aOrder = statusOrder[aStatus as keyof typeof statusOrder] || 999;
+    const bOrder = statusOrder[bStatus as keyof typeof statusOrder] || 999;
+    
+    if (aOrder !== bOrder) return aOrder - bOrder;
+    
+    // Secondary sort by username
+    const aUsername = a.username?.toLowerCase() || '';
+    const bUsername = b.username?.toLowerCase() || '';
+    return aUsername.localeCompare(bUsername);
+  });
+};
+
+const getInstanceFilterDisplayName = (filterOption: InstanceFilterOption): string => {
+  switch (filterOption) {
+    case 'all': return 'All';
+    case 'none': return 'None';
+    case 'waiting-for-product': return 'Waiting for Product';
+    case 'no-submission': return 'No Submission';
+    case 'brand-review': return 'Brand Review';
+    case 'revising': return 'Revising';
+    case 'ready-to-post': return 'Ready to Post';
+    case 'posted': return 'Posted';
+    case 'invoice-pending': return 'Invoice Pending';
+    case 'paid': return 'Paid';
+    default: return 'Filter';
+  }
+};
 
 export default function BrandDealDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [refreshing, setRefreshing] = useState(false);
   const [showAddCreatorSheet, setShowAddCreatorSheet] = useState(false);
   const [editingInstance, setEditingInstance] = useState<(BubbleThing & Instance0963) | null>(null);
+  const [filterBy, setFilterBy] = useState<InstanceFilterOption>('all');
+  const [dropdownVisible, setDropdownVisible] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const scrollViewRef = useRef<ScrollView>(null);
   
   // Fetch brand deal data
   const { 
@@ -47,6 +133,14 @@ export default function BrandDealDetailScreen() {
   console.log('Instances loading:', instancesLoading);
   console.log('Instances error:', instancesError);
 
+  // Apply filtering and sorting to instances
+  const instances = instancesData?.results || [];
+  const filteredInstances = filterAndSortInstances(instances, filterBy, searchQuery);
+  
+  // Calculate count information for enhanced UX
+  const statusFilteredCount = filterAndSortInstances(instances, filterBy, '').length;
+  const isSearching = searchQuery.trim().length > 0;
+
   // Handle pull-to-refresh
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -70,6 +164,37 @@ export default function BrandDealDetailScreen() {
   const handleEditInstance = (instance: BubbleThing & Instance0963) => {
     setEditingInstance(instance);
     setShowAddCreatorSheet(true);
+  };
+
+  const handleFilterSelect = (option: InstanceFilterOption) => {
+    setFilterBy(option);
+    setDropdownVisible(false);
+  };
+
+  const clearSearch = () => {
+    setSearchQuery('');
+  };
+
+  const getSearchPlaceholder = () => {
+    const filterName = getInstanceFilterDisplayName(filterBy);
+    return `Search ${filterName.toLowerCase()} instances...`;
+  };
+
+  const getCountText = () => {
+    if (isSearching) {
+      return `${filteredInstances.length} of ${statusFilteredCount} instances`;
+    }
+    return `${filteredInstances.length} instances`;
+  };
+
+  const handleSearchFocus = () => {
+    // Scroll to position the search bar at the top
+    // Account for brand deal header and instances section header
+    const scrollOffset = 280; // Approximate height of header sections
+    scrollViewRef.current?.scrollTo({
+      y: scrollOffset,
+      animated: true,
+    });
   };
 
   const handleAddCreatorSubmit = async (data: {
@@ -158,11 +283,10 @@ export default function BrandDealDetailScreen() {
     );
   }
 
-  const instances = instancesData?.results || [];
-
   return (
     <ThemedView style={styles.container}>
       <ScrollView
+        ref={scrollViewRef}
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -181,13 +305,49 @@ export default function BrandDealDetailScreen() {
         {/* Instances Section */}
         <ThemedView style={styles.instancesSection}>
           <ThemedView style={styles.sectionHeader}>
-            <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
-              Video Instances
-            </ThemedText>
-            <TouchableOpacity style={styles.addCreatorsButton} onPress={handleAddCreators}>
-              <IconSymbol size={16} name="plus" color="white" />
-              <ThemedText style={styles.addCreatorsText}>Add creators</ThemedText>
-            </TouchableOpacity>
+            <ThemedView style={styles.headerLeft}>
+              <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
+                Videos
+              </ThemedText>
+              <ThemedText type="subtitle" lightColor="#666" darkColor="#999">
+                {getCountText()}
+              </ThemedText>
+            </ThemedView>
+            
+            <ThemedView style={styles.headerRight}>
+              <TouchableOpacity style={styles.filterButton} onPress={() => setDropdownVisible(true)}>
+                <IconSymbol size={16} name="line.3.horizontal.decrease.circle" color="#6366f1" />
+                <ThemedText style={styles.filterText}>
+                  {getInstanceFilterDisplayName(filterBy)}
+                </ThemedText>
+                <IconSymbol size={12} name="chevron.down" color="#6366f1" />
+              </TouchableOpacity>
+              
+              <TouchableOpacity style={styles.addCreatorsButton} onPress={handleAddCreators}>
+                <IconSymbol size={16} name="plus" color="white" />
+                <ThemedText style={styles.addCreatorsText}>Add creators</ThemedText>
+              </TouchableOpacity>
+            </ThemedView>
+          </ThemedView>
+
+          {/* Search Bar */}
+          <ThemedView style={styles.searchContainer}>
+            <ThemedView style={styles.searchBar}>
+              <IconSymbol size={20} name="magnifyingglass" color="#666" />
+              <TextInput
+                style={styles.searchInput}
+                placeholder={getSearchPlaceholder()}
+                placeholderTextColor="#999"
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                onFocus={handleSearchFocus}
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={clearSearch} style={styles.clearButton}>
+                  <IconSymbol size={18} name="xmark.circle.fill" color="#999" />
+                </TouchableOpacity>
+              )}
+            </ThemedView>
           </ThemedView>
           
           {instancesLoading ? (
@@ -205,11 +365,52 @@ export default function BrandDealDetailScreen() {
               title="No instances yet"
               message="No video instances have been created for this brand deal."
             />
+          ) : filteredInstances.length === 0 ? (
+            <EmptyState
+              title={isSearching ? "No matches found" : "No instances in this status"}
+              message={isSearching 
+                ? `No instances match "${searchQuery}" in ${getInstanceFilterDisplayName(filterBy).toLowerCase()} status.`
+                : `There are no instances with ${getInstanceFilterDisplayName(filterBy).toLowerCase()} status.`
+              }
+            />
           ) : (
-            <InstanceList instances={instances} onEditInstance={handleEditInstance} />
+            <InstanceList instances={filteredInstances} onEditInstance={handleEditInstance} />
           )}
         </ThemedView>
       </ScrollView>
+
+      {/* Filter Dropdown Modal */}
+      <Modal
+        visible={dropdownVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setDropdownVisible(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setDropdownVisible(false)}
+        >
+          <ThemedView style={styles.dropdown}>
+            {['all', 'none', 'waiting-for-product', 'no-submission', 'brand-review', 'revising', 'ready-to-post', 'posted', 'invoice-pending', 'paid'].map((option) => (
+              <TouchableOpacity
+                key={option}
+                style={[
+                  styles.dropdownItem,
+                  filterBy === option && styles.dropdownItemSelected
+                ]}
+                onPress={() => handleFilterSelect(option as InstanceFilterOption)}
+              >
+                <ThemedText style={[
+                  styles.dropdownText,
+                  filterBy === option && styles.dropdownTextSelected
+                ]}>
+                  {getInstanceFilterDisplayName(option as InstanceFilterOption)}
+                </ThemedText>
+              </TouchableOpacity>
+            ))}
+          </ThemedView>
+        </Pressable>
+      </Modal>
 
       {/* Add Creator Sheet */}
       <AddCreatorSheet
@@ -251,8 +452,33 @@ const styles = StyleSheet.create({
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: 16,
+    gap: 16,
+  },
+  headerLeft: {
+    flex: 1,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  filterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(99, 102, 241, 0.3)',
+  },
+  filterText: {
+    color: '#6366f1',
+    fontSize: 10,
+    fontWeight: '500',
   },
   sectionTitle: {
     fontSize: 18,
@@ -291,5 +517,68 @@ const styles = StyleSheet.create({
   errorText: {
     textAlign: 'center',
     color: '#666',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'flex-start',
+    alignItems: 'flex-end',
+    paddingTop: 140, // Account for header height
+    paddingRight: 20, // Match the padding from the screen
+  },
+  dropdown: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    paddingVertical: 8,
+    minWidth: 200,
+    maxWidth: 300,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  dropdownItem: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
+  },
+  dropdownItemSelected: {
+    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+  },
+  dropdownText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  dropdownTextSelected: {
+    color: '#6366f1',
+    fontWeight: '600',
+  },
+  searchContainer: {
+    paddingBottom: 16,
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.1)',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 12,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#333',
+    paddingVertical: 0, // Remove default padding on iOS
+  },
+  clearButton: {
+    padding: 2,
   },
 });

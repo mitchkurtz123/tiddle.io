@@ -22,20 +22,56 @@ type LoginResponse = {
 
 export async function signInWithBubble(email: string, password: string) {
   const url = `${WF_BASE}/login`;
-  const res = await axios.post<LoginResponse>(url, { email, password } satisfies LoginPayload);
+  
+  try {
+    const res = await axios.post<LoginResponse>(url, { email, password } satisfies LoginPayload);
 
-  if (res.data?.status !== "success" || !res.data?.response?.token) {
-    throw new Error(res.data?.message ?? "Login failed");
+    if (res.data?.status !== "success" || !res.data?.response?.token) {
+      throw new Error(res.data?.message ?? "Login failed");
+    }
+
+    const { token, user_id, expires_in } = res.data.response;
+
+    // Persist for later API calls:
+    await SecureStore.setItemAsync("bubble_token", token);
+    await SecureStore.setItemAsync("bubble_user_id", user_id);
+    if (expires_in) await SecureStore.setItemAsync("bubble_token_exp_s", String(expires_in));
+
+    return { token, userId: user_id };
+  } catch (error: any) {
+    // Handle HTTP errors from axios
+    if (error.response) {
+      const status = error.response.status;
+      const data = error.response.data;
+      
+      // Handle authentication failures (400/401) with user-friendly messages
+      if (status === 400 || status === 401) {
+        // Check if the error message indicates invalid credentials
+        const message = data?.message?.toLowerCase() || '';
+        if (message.includes('password') || message.includes('credential') || message.includes('invalid') || message.includes('authentication')) {
+          throw new Error("Email or password is incorrect");
+        }
+        // For other 400/401 errors, still use the email/password incorrect message as it's most common
+        throw new Error("Email or password is incorrect");
+      }
+      
+      // Handle other HTTP errors
+      if (status >= 500) {
+        throw new Error("Server temporarily unavailable. Please try again.");
+      }
+      
+      // Use Bubble.io's error message if available, otherwise generic message
+      throw new Error(data?.message || `Request failed (${status})`);
+    }
+    
+    // Handle network errors
+    if (error.request) {
+      throw new Error("Network connection failed. Please check your internet connection.");
+    }
+    
+    // Handle other errors (parsing, etc.)
+    throw new Error(error.message || "Login failed");
   }
-
-  const { token, user_id, expires_in } = res.data.response;
-
-  // Persist for later API calls:
-  await SecureStore.setItemAsync("bubble_token", token);
-  await SecureStore.setItemAsync("bubble_user_id", user_id);
-  if (expires_in) await SecureStore.setItemAsync("bubble_token_exp_s", String(expires_in));
-
-  return { token, userId: user_id };
 }
 
 export async function logoutFromBubble(userId: string) {

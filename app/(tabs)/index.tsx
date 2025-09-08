@@ -1,4 +1,4 @@
-import { ActivityIndicator, FlatList, StyleSheet, Image, RefreshControl, TouchableOpacity, Modal, Pressable } from 'react-native';
+import { ActivityIndicator, FlatList, StyleSheet, Image, RefreshControl, TouchableOpacity, Modal, Pressable, TextInput } from 'react-native';
 import { useState } from 'react';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
@@ -118,14 +118,22 @@ const StatusBadge = ({ status }: { status?: string }) => {
 type FilterOption = 'all' | 'roster' | 'waiting' | 'in-progress' | 'invoiced' | 'complete' | 'canceled';
 
 // Filter and sort logic for branddeals
-const filterAndSortBranddeals = (branddeals: (BubbleThing & BrandDeal)[], filterBy: FilterOption) => {
+const filterAndSortBranddeals = (branddeals: (BubbleThing & BrandDeal)[], filterBy: FilterOption, searchQuery: string = '') => {
   let filtered = [...branddeals];
   
-  // Filter by status
+  // Filter by status first
   if (filterBy !== 'all') {
     const filterStatus = filterBy === 'in-progress' ? 'in progress' : filterBy;
     filtered = filtered.filter(item => 
       item["kaban-status"]?.toLowerCase() === filterStatus
+    );
+  }
+  
+  // Then filter by search query (within the status-filtered results)
+  if (searchQuery.trim()) {
+    const query = searchQuery.toLowerCase().trim();
+    filtered = filtered.filter(item => 
+      item.title?.toLowerCase().includes(query)
     );
   }
   
@@ -169,9 +177,15 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [filterBy, setFilterBy] = useState<FilterOption>('in-progress'); // Default to In Progress filter
   const [dropdownVisible, setDropdownVisible] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   
   // Apply filtering and sorting to the data
-  const filteredData = data ? filterAndSortBranddeals(data, filterBy) : [];
+  const filteredData = data ? filterAndSortBranddeals(data, filterBy, searchQuery) : [];
+  
+  // Calculate count information for enhanced UX
+  const totalCount = data ? data.length : 0;
+  const statusFilteredCount = data ? filterAndSortBranddeals(data, filterBy, '').length : 0;
+  const isSearching = searchQuery.trim().length > 0;
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -189,6 +203,22 @@ export default function HomeScreen() {
   const handleFilterSelect = (option: FilterOption) => {
     setFilterBy(option);
     setDropdownVisible(false);
+  };
+
+  const clearSearch = () => {
+    setSearchQuery('');
+  };
+
+  const getSearchPlaceholder = () => {
+    const filterName = getFilterDisplayName(filterBy);
+    return `Search ${filterName.toLowerCase()} campaigns...`;
+  };
+
+  const getCountText = () => {
+    if (isSearching) {
+      return `${filteredData.length} of ${statusFilteredCount} deals`;
+    }
+    return `${filteredData.length} deals`;
   };
 
   if (isLoading) {
@@ -215,7 +245,7 @@ export default function HomeScreen() {
         <ThemedView style={styles.headerLeft}>
           <ThemedText type="title">My Campaigns</ThemedText>
           <ThemedText type="subtitle" lightColor="#666" darkColor="#999">
-            {filteredData.length} deals
+            {getCountText()}
           </ThemedText>
         </ThemedView>
         
@@ -260,12 +290,36 @@ export default function HomeScreen() {
           </ThemedView>
         </Pressable>
       </Modal>
+
+      {/* Search Bar */}
+      <ThemedView style={styles.searchContainer}>
+        <ThemedView style={styles.searchBar}>
+          <IconSymbol size={20} name="magnifyingglass" color="#666" />
+          <TextInput
+            style={styles.searchInput}
+            placeholder={getSearchPlaceholder()}
+            placeholderTextColor="#999"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={clearSearch} style={styles.clearButton}>
+              <IconSymbol size={18} name="xmark.circle.fill" color="#999" />
+            </TouchableOpacity>
+          )}
+        </ThemedView>
+      </ThemedView>
       
       {filteredData.length === 0 ? (
         <ThemedView style={styles.emptyContainer}>
-          <ThemedText type="subtitle" style={styles.emptyTitle}>No branddeals yet</ThemedText>
+          <ThemedText type="subtitle" style={styles.emptyTitle}>
+            {isSearching ? 'No matching campaigns' : 'No campaigns yet'}
+          </ThemedText>
           <ThemedText style={styles.emptyText}>
-            Your branddeals will appear here once you create them.
+            {isSearching 
+              ? `No campaigns match "${searchQuery}" in ${getFilterDisplayName(filterBy).toLowerCase()} status.`
+              : 'Your campaigns will appear here once you create them.'
+            }
           </ThemedText>
         </ThemedView>
       ) : (
@@ -478,5 +532,29 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     letterSpacing: 0.5,
     textTransform: 'capitalize',
+  },
+  searchContainer: {
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.1)',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 12,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#333',
+    paddingVertical: 0, // Remove default padding on iOS
+  },
+  clearButton: {
+    padding: 2,
   },
 });

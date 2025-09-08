@@ -44,6 +44,8 @@ export type BrandDeal = {
   image?: string; // URL to branddeal image
   "kaban-status"?: string; // Current status in kanban workflow (matches API response)
   "created by"?: string; // User ID reference (matches Bubble field name)
+  brandname?: string; // Denormalized brand name for instant display
+  "user-list"?: string[]; // Array of user IDs associated with this branddeal
   // add more fields as needed from your Bubble branddeal datatype
 };
 

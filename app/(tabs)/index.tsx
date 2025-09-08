@@ -45,6 +45,19 @@ const BranddealImage = ({ branddeal }: { branddeal: BubbleThing & BrandDeal }) =
   );
 };
 
+// Component for user count display
+const UserCount = ({ userList }: { userList?: string[] }) => {
+  const count = userList?.length || 0;
+  
+  // Always show for debugging - we can see if it's a data or display issue
+  return (
+    <ThemedView style={styles.userCount}>
+      <IconSymbol size={14} name="person.fill" color="#666" />
+      <ThemedText style={styles.userCountText}>{count}</ThemedText>
+    </ThemedView>
+  );
+};
+
 // Component for professional status badge
 const StatusBadge = ({ status }: { status?: string }) => {
   if (!status) return null;
@@ -133,7 +146,8 @@ const filterAndSortBranddeals = (branddeals: (BubbleThing & BrandDeal)[], filter
   if (searchQuery.trim()) {
     const query = searchQuery.toLowerCase().trim();
     filtered = filtered.filter(item => 
-      item.title?.toLowerCase().includes(query)
+      item.title?.toLowerCase().includes(query) ||
+      item.brandname?.toLowerCase().includes(query)
     );
   }
   
@@ -183,7 +197,6 @@ export default function HomeScreen() {
   const filteredData = data ? filterAndSortBranddeals(data, filterBy, searchQuery) : [];
   
   // Calculate count information for enhanced UX
-  const totalCount = data ? data.length : 0;
   const statusFilteredCount = data ? filterAndSortBranddeals(data, filterBy, '').length : 0;
   const isSearching = searchQuery.trim().length > 0;
 
@@ -346,7 +359,12 @@ export default function HomeScreen() {
                   </ThemedText>
                   <StatusBadge status={item["kaban-status"]} />
                 </ThemedView>
-                <ThemedText style={styles.subtitle}>Brand</ThemedText>
+                <ThemedView style={styles.bottomRow}>
+                  <ThemedText style={styles.subtitle}>
+                    {item.brandname || 'Brand'}
+                  </ThemedText>
+                  <UserCount userList={item["user-list"]} />
+                </ThemedView>
               </ThemedView>
             </ThemedView>
           )}
@@ -507,15 +525,31 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     flex: 1,
   },
+  bottomRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 2,
+  },
   subtitle: {
     fontSize: 14,
-    opacity: 0.6,
+    color: '#6366f1', // Purple color matching tab icons
+    fontWeight: '500',
+  },
+  userCount: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  userCountText: {
+    fontSize: 12,
     color: '#666',
+    fontWeight: '500',
   },
   statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 5,
+    paddingHorizontal: 6,
+    paddingVertical: 0,
+    borderRadius: 4,
     alignSelf: 'flex-start',
     borderWidth: 1,
     shadowColor: '#000',
@@ -528,10 +562,13 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   statusText: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '600',
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
     textTransform: 'capitalize',
+    lineHeight: 16, // Tight line height to reduce vertical space
+    includeFontPadding: false, // Android: removes extra font padding
+    textAlignVertical: 'center', // Android: center text vertically
   },
   searchContainer: {
     paddingHorizontal: 20,

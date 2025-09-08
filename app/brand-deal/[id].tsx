@@ -7,15 +7,18 @@ import { IconSymbol } from '@/components/ui/IconSymbol';
 import { useBranddeal } from '@/hooks/useBranddeal';
 import { useInstances } from '@/hooks/useInstances';
 import { useCreateInstance } from '@/hooks/useCreateInstance';
+import { useUpdateInstance } from '@/hooks/useUpdateInstance';
 import BrandDealHeader from '@/components/brand-deal/BrandDealHeader';
 import InstanceList from '@/components/brand-deal/InstanceList';
 import EmptyState from '@/components/common/EmptyState';
 import AddCreatorSheet from '@/components/brand-deal/AddCreatorSheet';
+import { BubbleThing, Instance0963 } from '@/services/bubbleAPI';
 
 export default function BrandDealDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [refreshing, setRefreshing] = useState(false);
   const [showAddCreatorSheet, setShowAddCreatorSheet] = useState(false);
+  const [editingInstance, setEditingInstance] = useState<(BubbleThing & Instance0963) | null>(null);
   
   // Fetch brand deal data
   const { 
@@ -33,8 +36,9 @@ export default function BrandDealDetailScreen() {
     refetch: refetchInstances 
   } = useInstances(brandDeal?.["user-list"]);
 
-  // Create instance mutation
+  // Create and update instance mutations
   const createInstanceMutation = useCreateInstance();
+  const updateInstanceMutation = useUpdateInstance();
 
   // Debug logging
   console.log('Brand deal data:', brandDeal);
@@ -59,34 +63,58 @@ export default function BrandDealDetailScreen() {
   };
 
   const handleAddCreators = () => {
+    setEditingInstance(null);
+    setShowAddCreatorSheet(true);
+  };
+
+  const handleEditInstance = (instance: BubbleThing & Instance0963) => {
+    setEditingInstance(instance);
     setShowAddCreatorSheet(true);
   };
 
   const handleAddCreatorSubmit = async (data: {
-    user: string;
+    user?: string;
     platform: string;
     rate: number;
     price: number;
+    instanceStatus?: string;
+    instanceId?: string;
   }) => {
     if (!id) {
       throw new Error('Brand deal ID is required');
     }
 
-    console.log('=== STARTING INSTANCE CREATION ===');
-    console.log('Current brand deal:', brandDeal);
-    console.log('Current instances data:', instancesData);
-    console.log('Current user-list:', brandDeal?.["user-list"]);
+    console.log('=== STARTING INSTANCE OPERATION ===');
+    console.log('Edit mode:', !!editingInstance);
+    console.log('Data:', data);
     
     try {
-      const result = await createInstanceMutation.mutateAsync({
-        username: data.user,
-        platform: data.platform,
-        rate: data.rate,
-        price: data.price,
-        branddeal: id,
-      });
+      let result;
       
-      console.log('=== INSTANCE CREATION SUCCESS ===');
+      if (editingInstance && data.instanceId) {
+        // Update existing instance
+        console.log('=== UPDATING INSTANCE ===');
+        result = await updateInstanceMutation.mutateAsync({
+          instance: data.instanceId,
+          rate: data.rate,
+          price: data.price,
+          platform: data.platform,
+          instanceStatus: data.instanceStatus || 'None',
+        });
+        console.log('=== INSTANCE UPDATE SUCCESS ===');
+      } else {
+        // Create new instance
+        console.log('=== CREATING INSTANCE ===');
+        result = await createInstanceMutation.mutateAsync({
+          username: data.user!,
+          platform: data.platform,
+          rate: data.rate,
+          price: data.price,
+          branddeal: id,
+        });
+        console.log('=== INSTANCE CREATION SUCCESS ===');
+      }
+      
       console.log('API Result:', result);
       
       // Add a small delay to allow backend processing
@@ -99,10 +127,11 @@ export default function BrandDealDetailScreen() {
         console.log('Manual refetch completed');
       }, 1000);
       
-      console.log('Creator added successfully');
+      console.log('Operation completed successfully');
+      setEditingInstance(null);
     } catch (error) {
-      console.error('=== INSTANCE CREATION ERROR ===');
-      console.error('Failed to add creator:', error);
+      console.error('=== INSTANCE OPERATION ERROR ===');
+      console.error('Failed to process instance:', error);
       throw error;
     }
   };
@@ -177,7 +206,7 @@ export default function BrandDealDetailScreen() {
               message="No video instances have been created for this brand deal."
             />
           ) : (
-            <InstanceList instances={instances} />
+            <InstanceList instances={instances} onEditInstance={handleEditInstance} />
           )}
         </ThemedView>
       </ScrollView>
@@ -185,9 +214,14 @@ export default function BrandDealDetailScreen() {
       {/* Add Creator Sheet */}
       <AddCreatorSheet
         visible={showAddCreatorSheet}
-        onClose={() => setShowAddCreatorSheet(false)}
+        onClose={() => {
+          setShowAddCreatorSheet(false);
+          setEditingInstance(null);
+        }}
         onSubmit={handleAddCreatorSubmit}
-        isSubmitting={createInstanceMutation.isPending}
+        isSubmitting={createInstanceMutation.isPending || updateInstanceMutation.isPending}
+        editMode={!!editingInstance}
+        initialData={editingInstance}
       />
     </ThemedView>
   );

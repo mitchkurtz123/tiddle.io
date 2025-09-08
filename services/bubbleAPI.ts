@@ -379,3 +379,52 @@ export async function createInstance({
   }
 }
 
+/** ===== UPDATE INSTANCE: workflow endpoint for updating existing instances ===== */
+
+/**
+ * Update an existing instance using the workflow endpoint
+ */
+export async function updateInstance({
+  instance,
+  rate,
+  price,
+  instanceStatus,
+  platform,
+}: {
+  instance: string;
+  rate: number;
+  price: number;
+  instanceStatus: string;
+  platform: string;
+}): Promise<any> {
+  try {
+    console.log('Updating instance with data:', {
+      instance,
+      rate,
+      price,
+      instanceStatus,
+      platform,
+    });
+
+    // Create simple axios instance (no headers, no auth)
+    const simpleClient = axios.create({
+      baseURL: WF_BASE,
+      timeout: 15000,
+    });
+
+    const res = await simpleClient.post('/update-instance', {
+      instance,
+      rate,
+      price,
+      "instance-status": instanceStatus,
+      platform,
+    });
+
+    console.log('Instance updated successfully:', res.data);
+    return res.data;
+  } catch (e) {
+    console.error('Error updating instance:', e);
+    throw normalizeBubbleError(e);
+  }
+}
+

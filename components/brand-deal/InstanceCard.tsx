@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, Image } from 'react-native';
+import { StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { IconSymbol } from '@/components/ui/IconSymbol';
@@ -8,6 +8,7 @@ import { useUser } from '@/hooks/useUser';
 
 interface InstanceCardProps {
   instance: BubbleThing & Instance0963;
+  onEdit?: (instance: BubbleThing & Instance0963) => void;
 }
 
 // Component for instance status badge
@@ -17,19 +18,37 @@ const InstanceStatusBadge = ({ status }: { status?: string }) => {
   const getStatusStyle = (status: string) => {
     // Status color mapping for instances
     switch (status.toLowerCase()) {
-      case 'draft':
+      case 'none':
         return {
           backgroundColor: 'rgba(107, 114, 128, 0.1)',
           borderColor: 'rgba(107, 114, 128, 0.3)',
           textColor: '#374151'
         };
-      case 'in-review':
+      case 'waiting for product':
         return {
           backgroundColor: 'rgba(245, 158, 11, 0.1)',
           borderColor: 'rgba(245, 158, 11, 0.3)',
           textColor: '#92400e'
         };
-      case 'approved':
+      case 'no submission':
+        return {
+          backgroundColor: 'rgba(239, 68, 68, 0.1)',
+          borderColor: 'rgba(239, 68, 68, 0.3)',
+          textColor: '#991b1b'
+        };
+      case 'brand review':
+        return {
+          backgroundColor: 'rgba(99, 102, 241, 0.1)',
+          borderColor: 'rgba(99, 102, 241, 0.3)',
+          textColor: '#3730a3'
+        };
+      case 'revising':
+        return {
+          backgroundColor: 'rgba(245, 158, 11, 0.1)',
+          borderColor: 'rgba(245, 158, 11, 0.3)',
+          textColor: '#92400e'
+        };
+      case 'ready to post':
         return {
           backgroundColor: 'rgba(34, 197, 94, 0.1)',
           borderColor: 'rgba(34, 197, 94, 0.3)',
@@ -37,15 +56,21 @@ const InstanceStatusBadge = ({ status }: { status?: string }) => {
         };
       case 'posted':
         return {
-          backgroundColor: 'rgba(99, 102, 241, 0.1)',
-          borderColor: 'rgba(99, 102, 241, 0.3)',
-          textColor: '#3730a3'
+          backgroundColor: 'rgba(16, 185, 129, 0.1)',
+          borderColor: 'rgba(16, 185, 129, 0.3)',
+          textColor: '#047857'
         };
-      case 'rejected':
+      case 'invoice pending':
         return {
-          backgroundColor: 'rgba(239, 68, 68, 0.1)',
-          borderColor: 'rgba(239, 68, 68, 0.3)',
-          textColor: '#991b1b'
+          backgroundColor: 'rgba(245, 158, 11, 0.1)',
+          borderColor: 'rgba(245, 158, 11, 0.3)',
+          textColor: '#92400e'
+        };
+      case 'paid':
+        return {
+          backgroundColor: 'rgba(34, 197, 94, 0.1)',
+          borderColor: 'rgba(34, 197, 94, 0.3)',
+          textColor: '#166534'
         };
       default:
         return {
@@ -121,7 +146,7 @@ const PriceRateDisplay = ({ price, rate }: { price?: number; rate?: number }) =>
   );
 };
 
-export default function InstanceCard({ instance }: InstanceCardProps) {
+export default function InstanceCard({ instance, onEdit }: InstanceCardProps) {
   // Fetch user data using the user ID from the instance
   const { data: userData, isLoading: userLoading, error: userError } = useUser(instance.user);
   const [imageError, setImageError] = useState(false);
@@ -142,7 +167,11 @@ export default function InstanceCard({ instance }: InstanceCardProps) {
   const imageUrl = getImageUrl(userImage);
 
   return (
-    <ThemedView style={styles.card}>
+    <TouchableOpacity 
+      style={styles.card}
+      onPress={() => onEdit?.(instance)}
+      disabled={!onEdit}
+    >
       {/* Header Row */}
       <ThemedView style={styles.headerRow}>
         <ThemedView style={styles.userInfo}>
@@ -171,7 +200,7 @@ export default function InstanceCard({ instance }: InstanceCardProps) {
 
       {/* Price and Rate Section */}
       <PriceRateDisplay price={instance.price} rate={instance.rate} />
-    </ThemedView>
+    </TouchableOpacity>
   );
 }
 

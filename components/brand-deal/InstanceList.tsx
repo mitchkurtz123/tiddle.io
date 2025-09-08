@@ -5,11 +5,12 @@ import { BubbleThing, Instance0963 } from '@/services/bubbleAPI';
 
 interface InstanceListProps {
   instances: (BubbleThing & Instance0963)[];
+  onEditInstance?: (instance: BubbleThing & Instance0963) => void;
 }
 
-export default function InstanceList({ instances }: InstanceListProps) {
+export default function InstanceList({ instances, onEditInstance }: InstanceListProps) {
   const renderInstance = ({ item }: { item: BubbleThing & Instance0963 }) => {
-    return <InstanceCard instance={item} />;
+    return <InstanceCard instance={item} onEdit={onEditInstance} />;
   };
 
   return (

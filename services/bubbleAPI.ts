@@ -38,6 +38,15 @@ export type AppUser = {
   // add fields as needed, e.g. role?: string; managerId?: string;
 };
 
+/** BrandDeal shape for displaying user's branddeals */
+export type BrandDeal = {
+  title?: string;
+  image?: string; // URL to branddeal image
+  "kaban-status"?: string; // Current status in kanban workflow (matches API response)
+  "created by"?: string; // User ID reference (matches Bubble field name)
+  // add more fields as needed from your Bubble branddeal datatype
+};
+
 /** Axios client with dynamic Bearer token from SecureStore */
 export const bubbleClient = axios.create({
   baseURL: BASE_URL,
@@ -160,3 +169,64 @@ export async function searchUsersByName(term: string, limit = 50, cursor = 0) {
     throw normalizeBubbleError(e);
   }
 }
+
+/** ===== BRANDDEALS: fetch branddeals created by current user ===== */
+
+/**
+ * List branddeals created by a specific user.
+ * Clean, simple version that matches Postman request.
+ */
+export async function listBranddeals(
+  createdByUserId: string
+): Promise<{
+  results: (BubbleThing & BrandDeal)[];
+  cursor: number;
+  remaining: number;
+  count: number;
+}> {
+  try {
+    // Create simple axios instance (no headers, no auth - matches Postman)
+    const simpleClient = axios.create({
+      baseURL: BASE_URL,
+      timeout: 15000,
+      // No headers at all - just like Postman
+    });
+    
+    // Build constraints for filtering by "created by" field
+    const constraints = encodeConstraints([
+      { key: "created by", constraint_type: "equals", value: createdByUserId },
+    ]);
+    
+    // Manually construct full URL - bypass axios params handling
+    const fullURL = `/branddeal?constraints=${constraints}`;
+    
+    const res = await simpleClient.get<BubbleListResponse<BrandDeal>>(fullURL);
+    
+    const r = res.data?.response ?? {};
+    return {
+      results: r.results ?? [],
+      cursor: r.cursor ?? 0,
+      remaining: r.remaining ?? 0,
+      count: r.count ?? (r.results?.length ?? 0),
+    };
+  } catch (e) {
+    throw normalizeBubbleError(e);
+  }
+}
+
+/** Convenience helper if you only care about the array (no pagination meta) */
+export async function listBranddealsSimple(createdByUserId: string) {
+  const { results } = await listBranddeals(createdByUserId);
+  return results;
+}
+
+/** Get a single branddeal by Bubble unique id */
+export async function getBranddealById(id: string): Promise<BubbleThing & BrandDeal> {
+  try {
+    const res = await bubbleClient.get<BubbleGetResponse<BrandDeal>>(`/branddeal/${id}`);
+    return res.data.response;
+  } catch (e) {
+    throw normalizeBubbleError(e);
+  }
+}
+

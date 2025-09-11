@@ -7,7 +7,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Pressable,
   View,
 } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
@@ -228,16 +227,14 @@ export default function AddCreatorSheet({
   return (
     <Modal
       visible={visible}
-      transparent={true}
       animationType="slide"
+      presentationStyle="pageSheet"
       onRequestClose={handleClose}
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.container}
       >
-        <Pressable style={styles.backdrop} onPress={handleClose} />
-        
         <View style={styles.sheet}>
           {/* Header */}
           <ThemedView style={styles.header}>
@@ -404,27 +401,10 @@ export default function AddCreatorSheet({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'flex-end',
-  },
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
   },
   sheet: {
+    flex: 1,
     backgroundColor: 'white',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    height: '90%',
-    minHeight: 500,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: -2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
   },
   header: {
     flexDirection: 'row',
@@ -435,9 +415,6 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0,0,0,0.08)',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    overflow: 'hidden',
   },
   title: {
     fontSize: 18,

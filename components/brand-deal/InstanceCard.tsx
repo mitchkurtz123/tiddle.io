@@ -262,7 +262,7 @@ const styles = StyleSheet.create({
   userAvatar: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: 10,
     backgroundColor: '#6366f1',
     justifyContent: 'center',
     alignItems: 'center',
@@ -271,7 +271,7 @@ const styles = StyleSheet.create({
   userAvatarImage: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: 10,
   },
   avatarText: {
     color: 'white',

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   StyleSheet,
   Modal,
@@ -26,6 +26,7 @@ interface AddCreatorSheetProps {
     price: number;
     instanceStatus?: string;
     instanceId?: string;
+    notes?: string;
   }) => Promise<void>;
   isSubmitting?: boolean;
   editMode?: boolean;
@@ -114,6 +115,9 @@ export default function AddCreatorSheet({
   const [selectedStatus, setSelectedStatus] = useState('None');
   const [rate, setRate] = useState('');
   const [price, setPrice] = useState('');
+  const [notes, setNotes] = useState('');
+  
+  const scrollViewRef = useRef<ScrollView>(null);
 
   // Fetch user data for edit mode (same logic as InstanceCard)
   const { data: userData } = useUser(editMode && initialData ? initialData.user : undefined);
@@ -128,6 +132,7 @@ export default function AddCreatorSheet({
       setSelectedStatus(initialData["instance-status"] || 'None');
       setRate(initialData.rate?.toString() || '');
       setPrice(initialData.price?.toString() || '');
+      setNotes(initialData.notes || '');
     } else {
       // Reset to defaults for add mode
       setUser('');
@@ -135,6 +140,7 @@ export default function AddCreatorSheet({
       setSelectedStatus('None');
       setRate('');
       setPrice('');
+      setNotes('');
     }
   }, [editMode, initialData, visible, userData]);
 
@@ -179,6 +185,7 @@ export default function AddCreatorSheet({
         rate: parseFloat(rate),
         price: parseFloat(price),
         instanceStatus: selectedStatus,
+        notes: notes.trim(),
         ...(editMode && initialData ? { instanceId: initialData._id } : { user: user.trim() }),
       };
 
@@ -190,6 +197,7 @@ export default function AddCreatorSheet({
       setPrice('');
       setSelectedPlatform('TikTok');
       setSelectedStatus('None');
+      setNotes('');
       onClose();
     } catch (error) {
       console.error(`Failed to ${editMode ? 'update' : 'add'} creator:`, error);
@@ -204,10 +212,18 @@ export default function AddCreatorSheet({
     setPrice('');
     setSelectedPlatform('TikTok');
     setSelectedStatus('draft');
+    setNotes('');
     onClose();
   };
 
   const isFormValid = (editMode || user.trim()) && rate && price && !isNaN(parseFloat(rate)) && !isNaN(parseFloat(price));
+
+  const handleNotesInputFocus = () => {
+    // Add a small delay to allow keyboard to appear, then scroll to show the notes input
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 300);
+  };
 
   return (
     <Modal
@@ -233,7 +249,11 @@ export default function AddCreatorSheet({
             </TouchableOpacity>
           </ThemedView>
 
-          <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+          <ScrollView 
+            ref={scrollViewRef}
+            style={styles.content} 
+            showsVerticalScrollIndicator={false}
+          >
             {/* User Input */}
             <ThemedView style={styles.inputGroup}>
               <ThemedText style={styles.label}>User</ThemedText>
@@ -245,6 +265,39 @@ export default function AddCreatorSheet({
                 placeholderTextColor="#999"
                 autoCapitalize="none"
               />
+            </ThemedView>
+
+            {/* Rate and Price */}
+            <ThemedView style={[styles.row, styles.inputGroup]}>
+              <ThemedView style={styles.halfInput}>
+                <ThemedText style={styles.label}>Rate (Creator gets)</ThemedText>
+                <ThemedView style={styles.currencyInputContainer}>
+                  <ThemedText style={styles.currencySymbol}>$</ThemedText>
+                  <TextInput
+                    style={styles.currencyInput}
+                    value={rate}
+                    onChangeText={handleRateChange}
+                    placeholder="0.00"
+                    placeholderTextColor="#999"
+                    keyboardType="decimal-pad"
+                  />
+                </ThemedView>
+              </ThemedView>
+
+              <ThemedView style={styles.halfInput}>
+                <ThemedText style={styles.label}>Price (You get)</ThemedText>
+                <ThemedView style={styles.currencyInputContainer}>
+                  <ThemedText style={styles.currencySymbol}>$</ThemedText>
+                  <TextInput
+                    style={styles.currencyInput}
+                    value={price}
+                    onChangeText={handlePriceChange}
+                    placeholder="0.00"
+                    placeholderTextColor="#999"
+                    keyboardType="decimal-pad"
+                  />
+                </ThemedView>
+              </ThemedView>
             </ThemedView>
 
             {/* Platform Selection */}
@@ -307,49 +360,25 @@ export default function AddCreatorSheet({
               </ThemedView>
             </ThemedView>
 
-            {/* Rate and Price */}
-            <ThemedView style={styles.row}>
-              <ThemedView style={styles.halfInput}>
-                <ThemedText style={styles.label}>Rate (Creator gets)</ThemedText>
-                <ThemedView style={styles.currencyInputContainer}>
-                  <ThemedText style={styles.currencySymbol}>$</ThemedText>
-                  <TextInput
-                    style={styles.currencyInput}
-                    value={rate}
-                    onChangeText={handleRateChange}
-                    placeholder="0.00"
-                    placeholderTextColor="#999"
-                    keyboardType="decimal-pad"
-                  />
-                </ThemedView>
-              </ThemedView>
-
-              <ThemedView style={styles.halfInput}>
-                <ThemedText style={styles.label}>Price (You get)</ThemedText>
-                <ThemedView style={styles.currencyInputContainer}>
-                  <ThemedText style={styles.currencySymbol}>$</ThemedText>
-                  <TextInput
-                    style={styles.currencyInput}
-                    value={price}
-                    onChangeText={handlePriceChange}
-                    placeholder="0.00"
-                    placeholderTextColor="#999"
-                    keyboardType="decimal-pad"
-                  />
-                </ThemedView>
-              </ThemedView>
+            {/* Notes Input */}
+            <ThemedView style={styles.inputGroup}>
+              <ThemedText style={styles.label}>Notes</ThemedText>
+              <TextInput
+                style={[styles.textInput, styles.notesInput]}
+                value={notes}
+                onChangeText={setNotes}
+                onFocus={handleNotesInputFocus}
+                placeholder="Add notes for this instance..."
+                placeholderTextColor="#999"
+                multiline={true}
+                numberOfLines={3}
+                textAlignVertical="top"
+              />
             </ThemedView>
           </ScrollView>
 
           {/* Footer */}
           <ThemedView style={styles.footer}>
-            <TouchableOpacity
-              style={styles.cancelButton}
-              onPress={handleClose}
-            >
-              <ThemedText style={styles.cancelText}>Cancel</ThemedText>
-            </TouchableOpacity>
-
             <TouchableOpacity
               style={[
                 styles.submitButton,
@@ -385,7 +414,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
-    height: '85%',
+    height: '90%',
     minHeight: 500,
     overflow: 'hidden',
     shadowColor: '#000',
@@ -441,6 +470,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     color: '#000',
     minHeight: 44,
+  },
+  notesInput: {
+    minHeight: 80,
+    maxHeight: 120,
   },
   platformGrid: {
     flexDirection: 'row',
@@ -522,28 +555,13 @@ const styles = StyleSheet.create({
     color: '#000',
   },
   footer: {
-    flexDirection: 'row',
     paddingHorizontal: 20,
-    paddingVertical: 20,
-    gap: 12,
+    paddingTop: 20,
+    paddingBottom: 32,
     borderTopWidth: 1,
     borderTopColor: 'rgba(0,0,0,0.08)',
   },
-  cancelButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.12)',
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  cancelText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#374151',
-  },
   submitButton: {
-    flex: 1,
     paddingVertical: 12,
     backgroundColor: '#6366f1',
     borderRadius: 8,

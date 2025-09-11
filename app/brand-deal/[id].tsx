@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { StyleSheet, ActivityIndicator, ScrollView, RefreshControl, TouchableOpacity, Modal, Pressable, TextInput } from 'react-native';
+import { StyleSheet, ActivityIndicator, ScrollView, RefreshControl, TouchableOpacity, Modal, Pressable, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
@@ -84,13 +84,13 @@ const getInstanceFilterDisplayName = (filterOption: InstanceFilterOption): strin
   switch (filterOption) {
     case 'all': return 'All';
     case 'none': return 'None';
-    case 'waiting-for-product': return 'Waiting for Product';
+    case 'waiting-for-product': return 'Waiting';
     case 'no-submission': return 'No Submission';
     case 'brand-review': return 'Brand Review';
     case 'revising': return 'Revising';
     case 'ready-to-post': return 'Ready to Post';
     case 'posted': return 'Posted';
-    case 'invoice-pending': return 'Invoice Pending';
+    case 'invoice-pending': return 'Invoiced';
     case 'paid': return 'Paid';
     default: return 'Filter';
   }
@@ -138,7 +138,6 @@ export default function BrandDealDetailScreen() {
   const filteredInstances = filterAndSortInstances(instances, filterBy, searchQuery);
   
   // Calculate count information for enhanced UX
-  const statusFilteredCount = filterAndSortInstances(instances, filterBy, '').length;
   const isSearching = searchQuery.trim().length > 0;
 
   // Handle pull-to-refresh
@@ -180,21 +179,18 @@ export default function BrandDealDetailScreen() {
     return `Search ${filterName.toLowerCase()} instances...`;
   };
 
-  const getCountText = () => {
-    if (isSearching) {
-      return `${filteredInstances.length} of ${statusFilteredCount} instances`;
-    }
-    return `${filteredInstances.length} instances`;
-  };
 
   const handleSearchFocus = () => {
-    // Scroll to position the search bar at the top
-    // Account for brand deal header and instances section header
-    const scrollOffset = 280; // Approximate height of header sections
-    scrollViewRef.current?.scrollTo({
-      y: scrollOffset,
-      animated: true,
-    });
+    // Add delay to allow keyboard to appear, then scroll to position the search bar optimally
+    setTimeout(() => {
+      // Account for brand deal header and instances section header
+      // Add extra offset to ensure search results are visible above keyboard
+      const scrollOffset = 320; // Increased from 280 to provide more space above keyboard
+      scrollViewRef.current?.scrollTo({
+        y: scrollOffset,
+        animated: true,
+      });
+    }, 300);
   };
 
   const handleAddCreatorSubmit = async (data: {
@@ -204,6 +200,7 @@ export default function BrandDealDetailScreen() {
     price: number;
     instanceStatus?: string;
     instanceId?: string;
+    notes?: string;
   }) => {
     if (!id) {
       throw new Error('Brand deal ID is required');
@@ -225,6 +222,7 @@ export default function BrandDealDetailScreen() {
           price: data.price,
           platform: data.platform,
           instanceStatus: data.instanceStatus || 'None',
+          notes: data.notes,
         });
         console.log('=== INSTANCE UPDATE SUCCESS ===');
       } else {
@@ -236,6 +234,7 @@ export default function BrandDealDetailScreen() {
           rate: data.rate,
           price: data.price,
           branddeal: id,
+          notes: data.notes,
         });
         console.log('=== INSTANCE CREATION SUCCESS ===');
       }
@@ -284,21 +283,25 @@ export default function BrandDealDetailScreen() {
   }
 
   return (
-    <ThemedView style={styles.container}>
-      <ScrollView
-        ref={scrollViewRef}
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            tintColor="#6366f1"
-            colors={["#6366f1"]}
-          />
-        }
-      >
+    <KeyboardAvoidingView 
+      style={styles.container} 
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <ThemedView style={styles.container}>
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor="#6366f1"
+              colors={["#6366f1"]}
+            />
+          }
+        >
         {/* Header Section */}
         <BrandDealHeader brandDeal={brandDeal} />
         
@@ -307,10 +310,7 @@ export default function BrandDealDetailScreen() {
           <ThemedView style={styles.sectionHeader}>
             <ThemedView style={styles.headerLeft}>
               <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
-                Videos
-              </ThemedText>
-              <ThemedText type="subtitle" lightColor="#666" darkColor="#999">
-                {getCountText()}
+                {filteredInstances.length} Videos
               </ThemedText>
             </ThemedView>
             
@@ -424,7 +424,8 @@ export default function BrandDealDetailScreen() {
         editMode={!!editingInstance}
         initialData={editingInstance}
       />
-    </ThemedView>
+      </ThemedView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -452,7 +453,7 @@ const styles = StyleSheet.create({
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     marginBottom: 16,
     gap: 16,
   },

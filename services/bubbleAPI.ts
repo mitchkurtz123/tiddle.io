@@ -61,6 +61,7 @@ export type Instance0963 = {
   platform?: string; // Platform where video will be posted (e.g., TikTok, Instagram)
   "instance-status"?: string; // Status of this specific instance
   user?: string; // User ID reference to get full user details
+  notes?: string; // Notes for this instance
   // add more fields as needed from your Bubble instance0963 datatype
 };
 
@@ -341,12 +342,14 @@ export async function createInstance({
   price,
   platform,
   branddeal,
+  notes,
 }: {
   username: string;
   rate: number;
   price: number;
   platform: string;
   branddeal: string;
+  notes?: string;
 }): Promise<any> {
   try {
     console.log('Creating instance with data:', {
@@ -355,6 +358,7 @@ export async function createInstance({
       price,
       platform,
       branddeal,
+      notes,
     });
 
     // Create simple axios instance (no headers, no auth)
@@ -369,6 +373,7 @@ export async function createInstance({
       price,
       platform,
       branddeal,
+      notes,
     });
 
     console.log('Instance created successfully:', res.data);
@@ -390,12 +395,14 @@ export async function updateInstance({
   price,
   instanceStatus,
   platform,
+  notes,
 }: {
   instance: string;
   rate: number;
   price: number;
   instanceStatus: string;
   platform: string;
+  notes?: string;
 }): Promise<any> {
   try {
     console.log('Updating instance with data:', {
@@ -404,6 +411,7 @@ export async function updateInstance({
       price,
       instanceStatus,
       platform,
+      notes,
     });
 
     // Create simple axios instance (no headers, no auth)
@@ -418,6 +426,7 @@ export async function updateInstance({
       price,
       "instance-status": instanceStatus,
       platform,
+      notes,
     });
 
     console.log('Instance updated successfully:', res.data);

@@ -1,14 +1,18 @@
 import React, { useState } from 'react';
-import { StyleSheet, Image, TouchableOpacity } from 'react-native';
+import { StyleSheet, Image, TouchableOpacity, ActionSheetIOS } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { IconSymbol } from '@/components/ui/IconSymbol';
+import { TikTokIcon, InstagramIcon, YouTubeIcon, TwitterIcon } from '@/components/ui/platform-icons';
 import { BubbleThing, Instance0963 } from '@/services/bubbleAPI';
 import { useUser } from '@/hooks/useUser';
 
 interface InstanceCardProps {
   instance: BubbleThing & Instance0963;
   onEdit?: (instance: BubbleThing & Instance0963) => void;
+  onCreatePayment?: (instance: BubbleThing & Instance0963) => void;
+  onSubmitLink?: (instance: BubbleThing & Instance0963) => void;
+  onDelete?: (instance: BubbleThing & Instance0963) => void;
 }
 
 // Component for instance status badge
@@ -100,19 +104,19 @@ const InstanceStatusBadge = ({ status }: { status?: string }) => {
 
 // Component for platform icon
 const PlatformIcon = ({ platform }: { platform?: string }) => {
-  const getPlatformIcon = (platform: string) => {
+  const renderPlatformIcon = (platform: string) => {
     switch (platform.toLowerCase()) {
       case 'tiktok':
-        return 'video.fill';
+        return <TikTokIcon size={14} color="#6366f1" />;
       case 'instagram':
-        return 'camera.fill';
+        return <InstagramIcon size={14} color="#6366f1" />;
       case 'youtube':
-        return 'play.fill';
+        return <YouTubeIcon size={14} color="#6366f1" />;
       case 'twitter':
       case 'x':
-        return 'text.bubble.fill';
+        return <TwitterIcon size={14} color="#6366f1" />;
       default:
-        return 'globe';
+        return <IconSymbol size={14} name="globe" color="#6366f1" />;
     }
   };
 
@@ -120,36 +124,37 @@ const PlatformIcon = ({ platform }: { platform?: string }) => {
 
   return (
     <ThemedView style={styles.platformContainer}>
-      <IconSymbol size={14} name={getPlatformIcon(platform)} color="#6366f1" />
+      {renderPlatformIcon(platform)}
       <ThemedText style={styles.platformText}>{platform}</ThemedText>
     </ThemedView>
   );
 };
 
-// Component for price and rate display
-const PriceRateDisplay = ({ price, rate }: { price?: number; rate?: number }) => {
-  return (
-    <ThemedView style={styles.priceContainer}>
-      <ThemedView style={styles.priceItem}>
-        <ThemedText style={styles.priceLabel}>Rate</ThemedText>
-        <ThemedText style={styles.rateText}>
-          {rate ? `$${rate.toLocaleString()}` : 'TBD'}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.priceItem}>
-        <ThemedText style={styles.priceLabel}>Price</ThemedText>
-        <ThemedText style={styles.priceText}>
-          {price ? `$${price.toLocaleString()}` : 'TBD'}
-        </ThemedText>
-      </ThemedView>
-    </ThemedView>
-  );
-};
 
-export default function InstanceCard({ instance, onEdit }: InstanceCardProps) {
+export default function InstanceCard({ instance, onEdit, onCreatePayment, onSubmitLink, onDelete }: InstanceCardProps) {
   // Fetch user data using the user ID from the instance
-  const { data: userData, isLoading: userLoading, error: userError } = useUser(instance.user);
+  const { data: userData, isLoading: userLoading } = useUser(instance.user);
   const [imageError, setImageError] = useState(false);
+  
+  const handleMenuPress = () => {
+    ActionSheetIOS.showActionSheetWithOptions(
+      {
+        options: ['Cancel', 'Create Payment', 'Submit Link', 'Delete'],
+        destructiveButtonIndex: 3,
+        cancelButtonIndex: 0,
+        title: 'Instance Actions',
+      },
+      (buttonIndex) => {
+        if (buttonIndex === 1) {
+          onCreatePayment?.(instance);
+        } else if (buttonIndex === 2) {
+          onSubmitLink?.(instance);
+        } else if (buttonIndex === 3) {
+          onDelete?.(instance);
+        }
+      },
+    );
+  };
   
   // Use user data if available, fallback to instance username
   const displayName = userData?.username ?? instance.username ?? "Unknown User";
@@ -195,11 +200,40 @@ export default function InstanceCard({ instance, onEdit }: InstanceCardProps) {
             <PlatformIcon platform={instance.platform} />
           </ThemedView>
         </ThemedView>
-        <InstanceStatusBadge status={instance["instance-status"]} />
+        <ThemedView style={styles.headerActions}>
+          <InstanceStatusBadge status={instance["instance-status"]} />
+          <TouchableOpacity
+            style={styles.menuButton}
+            onPress={(e) => {
+              e.stopPropagation();
+              handleMenuPress();
+            }}
+          >
+            <IconSymbol size={20} name="ellipsis" color="#666" />
+          </TouchableOpacity>
+        </ThemedView>
       </ThemedView>
 
-      {/* Price and Rate Section */}
-      <PriceRateDisplay price={instance.price} rate={instance.rate} />
+      {/* Price and Notes Row */}
+      <ThemedView style={styles.priceNotesRow}>
+        {/* Price Section */}
+        <ThemedView style={styles.priceSection}>
+          <ThemedText style={styles.priceLabel}>Price</ThemedText>
+          <ThemedText style={styles.priceText}>
+            {instance.price ? `$${instance.price.toLocaleString()}` : 'TBD'}
+          </ThemedText>
+        </ThemedView>
+
+        {/* Notes Section */}
+        {instance.notes && (
+          <ThemedView style={styles.notesSection}>
+            <ThemedText style={styles.notesLabel}>Notes</ThemedText>
+            <ThemedText style={styles.notesText} numberOfLines={3}>
+              {instance.notes}
+            </ThemedText>
+          </ThemedView>
+        )}
+      </ThemedView>
     </TouchableOpacity>
   );
 }
@@ -263,15 +297,23 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     textTransform: 'capitalize',
   },
-  priceContainer: {
+  headerActions: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 8,
+    gap: 8,
   },
-  priceItem: {
-    alignItems: 'center',
-    gap: 2,
+  menuButton: {
+    padding: 4,
+    borderRadius: 4,
+  },
+  priceNotesRow: {
+    flexDirection: 'row',
+    paddingTop: 8,
+    gap: 16,
+  },
+  priceSection: {
+    flex: 1,
+    alignItems: 'flex-start',
   },
   priceLabel: {
     fontSize: 10,
@@ -279,16 +321,30 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-  },
-  rateText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#059669', // Green color for creator rate
+    marginBottom: 2,
   },
   priceText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#6366f1', // Indigo color for company price
+    color: '#6366f1',
+  },
+  notesSection: {
+    flex: 2,
+    alignItems: 'flex-start',
+  },
+  notesLabel: {
+    fontSize: 10,
+    color: '#666',
+    fontWeight: '500',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  notesText: {
+    fontSize: 14,
+    color: '#374151',
+    lineHeight: 18,
+    textAlign: 'left',
   },
   statusBadge: {
     paddingHorizontal: 8,

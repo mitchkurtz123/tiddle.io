@@ -180,27 +180,62 @@ The app features a complete brand deal and campaign management workflow:
 - **Dynamic Routing**: File-based routing with brand deal ID parameter
 - **Campaign Header**: Large campaign image, title, brand name, status badge, and creator count
 - **Back Navigation**: Proper navigation with fallback to home screen
-- **Instance Management**: Complete list of video instances (creator submissions)
-- **Real-time Updates**: Automatic refresh after creating new instances
+- **Instance Management**: Complete list of video instances (creator submissions) with advanced filtering
+- **Search & Filter System**: Real-time search by username/platform with comprehensive status filtering
+- **Mobile-Optimized Search**: Auto-scroll search bar to top when keyboard appears for better mobile UX
+- **Dynamic Instance Counts**: Shows filtered vs total counts (e.g., "3 of 8 instances")
+- **Real-time Updates**: Automatic refresh after creating or updating instances
 
 #### Instance Management
-- **Instance Cards**: Display creator username, platform, pricing (rate vs price), and status
-- **User Data Integration**: Automatic fetching of creator profiles with avatars
+- **Instance Cards**: Display creator username, platform, pricing (rate vs price), and status with click-to-edit functionality
+- **User Data Integration**: Automatic fetching of creator profiles with avatars and username resolution
 - **Platform Icons**: Visual indicators for TikTok, Instagram, YouTube
-- **Status Tracking**: Color-coded status badges for instance workflow stages
+- **Status Tracking**: Color-coded status badges for complete instance workflow (None, Waiting for Product, No Submission, Brand Review, Revising, Ready to Post, Posted, Invoice Pending, Paid)
+- **Advanced Filtering**: Filter instances by status with 10 workflow stages
+- **Real-time Search**: Search instances by creator username and platform with instant results
+- **Smart Empty States**: Context-aware empty states for different search/filter scenarios
 
-#### Creator Addition Workflow
-- **Professional Form**: Bottom sheet modal with comprehensive input validation
-- **User Input**: Text field for username/user ID (expandable to user search in future)
+#### Creator Addition & Editing Workflow
+- **Professional Form**: iOS-style bottom sheet modal with 28px rounded corners and shadow effects
+- **Dual Mode Support**: Create new instances or edit existing ones with pre-populated data
+- **User Input**: Text field with automatic username resolution from instance data
 - **Platform Selection**: Toggle buttons for TikTok, Instagram, YouTube
+- **Status Selection**: Multi-row status selector with dynamic color coding matching instance badges
 - **Currency Inputs**: Formatted rate and price fields with dollar signs and decimal validation
+- **Dynamic Color System**: Status selector buttons use the same colors as instance status badges
 - **Real-time Feedback**: Loading states, error handling, and immediate list updates
+- **Smart Validation**: Different validation rules for create vs edit modes
 
 #### Data Synchronization
-- **React Query Mutations**: Proper cache invalidation across all related queries
+- **React Query Mutations**: Proper cache invalidation across all related queries (create and update operations)
 - **Optimistic Updates**: Immediate UI feedback while API calls process
-- **Multi-layer Caching**: Invalidates instances, brand deals, and user queries
+- **Multi-layer Caching**: Invalidates instances, brand deals, and user queries after mutations
 - **Error Recovery**: Graceful error handling with retry capabilities
+- **Dual API Integration**: Uses both object endpoints (`/instance0963`) and workflow endpoints (`/create-instance`, `/update-instance`)
+- **Status Management**: Complete instance status workflow with proper API field mapping
+
+### Advanced Instance Management Features
+The brand deal detail screen includes sophisticated instance management capabilities:
+
+#### Search & Filter System
+- **Multi-field Search**: Search instances by creator username and platform with real-time filtering
+- **Comprehensive Status Filtering**: 10-stage instance workflow filter (None, Waiting for Product, No Submission, Brand Review, Revising, Ready to Post, Posted, Invoice Pending, Paid)
+- **Dynamic Count Display**: Shows filtered vs total counts with context-aware messaging
+- **Professional Filter UI**: Anchored dropdown modal with status-specific color coding
+- **Smart Empty States**: Different messages for no results, no status matches, or no instances
+
+#### Mobile UX Optimizations  
+- **Auto-scroll Search**: Search bar automatically scrolls to top when focused to prevent keyboard overlay
+- **Full-width Layout**: Search bar spans full container width matching instance cards
+- **Touch-friendly Filters**: Large touch targets for filter buttons with proper spacing
+- **iOS-style Interactions**: Smooth animations and haptic feedback for better mobile experience
+
+#### Edit Instance Functionality
+- **Click-to-Edit**: Tap any instance card to edit its details
+- **Pre-populated Forms**: Edit mode automatically fills form with current instance data  
+- **Username Resolution**: Fetches and displays proper username from user data with fallback
+- **Status Color Matching**: Form status selector uses same colors as instance status badges
+- **Dual API Operations**: Seamless create/update operations with different endpoints
 
 ### User Interface Components
 - **UserAvatar**: Intelligent avatar component with image loading and fallback to initials

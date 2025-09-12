@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
-import { StyleSheet, Image, TouchableOpacity } from 'react-native';
+import React from 'react';
+import { StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { IconSymbol } from '@/components/ui/IconSymbol';
 import { BrandDeal, BubbleThing } from '@/services/bubbleAPI';
+import { ImageWithFallback } from '@/components/shared/ImageWithFallback';
+import { UserCount as SharedUserCount } from '@/components/shared/CountDisplay';
+import { StatusBadge as SharedStatusBadge } from '@/components/shared/StatusBadge';
+import { Card } from '@/components/layout/Card';
 
 interface CampaignCardProps {
   item: BubbleThing & BrandDeal;
@@ -13,57 +16,37 @@ interface CampaignCardProps {
 
 // Component for branddeal image with fallback
 const BranddealImage = ({ branddeal }: { branddeal: BubbleThing & BrandDeal }) => {
-  const [imageError, setImageError] = useState(false);
-  
-  // Fix protocol-relative URLs (starting with //)
-  const getImageUrl = (url: string | undefined): string | null => {
-    if (!url) return null;
-    
-    // If URL starts with //, add https:
-    if (url.startsWith('//')) {
-      return `https:${url}`;
-    }
-    
-    return url;
-  };
-  
-  const imageUrl = getImageUrl(branddeal.image);
-  
-  if (imageUrl && !imageError) {
-    return (
-      <Image
-        source={{ uri: imageUrl }}
-        style={styles.branddealImage}
-        onError={() => setImageError(true)}
-      />
-    );
-  }
-  
-  // Fallback placeholder
   return (
-    <ThemedView style={styles.imagePlaceholder}>
-      <ThemedText type="defaultSemiBold" style={styles.placeholderText}>
-        {(branddeal.title ?? "BD").charAt(0).toUpperCase()}
-      </ThemedText>
-    </ThemedView>
+    <ImageWithFallback
+      url={branddeal.image}
+      style={styles.branddealImage}
+      fallbackText={(branddeal.title ?? "BD").charAt(0).toUpperCase()}
+      fallbackStyle={styles.imagePlaceholder}
+      fallbackTextStyle={styles.placeholderText}
+    />
   );
 };
 
-// Component for user count display
+// Using shared UserCount component
 const UserCount = ({ userList }: { userList?: string[] }) => {
   const count = userList?.length || 0;
-  
-  // Always show for debugging - we can see if it's a data or display issue
   return (
-    <ThemedView style={styles.userCount}>
-      <IconSymbol size={14} name="person.fill" color="#666" />
-      <ThemedText style={styles.userCountText}>{count}</ThemedText>
-    </ThemedView>
+    <SharedUserCount 
+      count={count} 
+      style={styles.userCount} 
+      textStyle={styles.userCountText} 
+    />
   );
 };
 
-// Component for professional status badge
+// Using shared StatusBadge component
 const StatusBadge = ({ status }: { status?: string }) => {
+  if (!status) return null;
+  return <SharedStatusBadge status={status} type="branddeal" />;
+};
+
+// Legacy implementation (can be removed after testing)
+const LegacyStatusBadge = ({ status }: { status?: string }) => {
   if (!status) return null;
   
   const getStatusStyle = (status: string) => {
@@ -142,7 +125,7 @@ export default function CampaignCard({ item, onPress }: CampaignCardProps) {
   };
 
   const CardContent = (
-    <ThemedView style={styles.branddealCard}>
+    <>
       <BranddealImage branddeal={item} />
       <ThemedView style={styles.branddealInfo}>
         <ThemedView style={styles.titleRow}>
@@ -158,27 +141,21 @@ export default function CampaignCard({ item, onPress }: CampaignCardProps) {
           <UserCount userList={item["user-list"]} />
         </ThemedView>
       </ThemedView>
-    </ThemedView>
+    </>
   );
 
-  // Always wrap in TouchableOpacity for navigation
+  // Use shared Card component for navigation
   return (
-    <TouchableOpacity onPress={handlePress}>
+    <Card onPress={handlePress} style={styles.cardOverride}>
       {CardContent}
-    </TouchableOpacity>
+    </Card>
   );
 }
 
 const styles = StyleSheet.create({
-  branddealCard: {
+  cardOverride: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    marginBottom: 12,
-    borderRadius: 12,
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.08)',
   },
   branddealImage: {
     width: 60,

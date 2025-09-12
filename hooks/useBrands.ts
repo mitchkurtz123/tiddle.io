@@ -1,11 +1,15 @@
 // hooks/useBrands.ts
-import { useQuery } from "@tanstack/react-query";
-import { listBrandsSimple } from "../services/bubbleAPI";
+import { listBrandsSimple, BubbleThing, Brand } from "../services/bubbleAPI";
+import { useApiQuery } from "@/hooks/shared/useApiQuery";
 
 export function useBrands() {
-  return useQuery({
-    queryKey: ["brands"],
-    queryFn: () => listBrandsSimple(),
-    staleTime: 30_000, // 30 seconds - consistent with useUsers
-  });
+  return useApiQuery<(BubbleThing & Brand)[]>(
+    ["brands"],
+    () => listBrandsSimple(),
+    {
+      config: {
+        staleTime: 30_000, // 30 seconds - consistent with useUsers
+      },
+    }
+  );
 }

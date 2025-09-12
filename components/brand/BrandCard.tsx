@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
-import { StyleSheet, Image, TouchableOpacity } from 'react-native';
+import React from 'react';
+import { StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { IconSymbol } from '@/components/ui/IconSymbol';
 import { Brand, BubbleThing } from '@/services/bubbleAPI';
+import { ImageWithFallback } from '@/components/shared/ImageWithFallback';
+import { ContactCount } from '@/components/shared/CountDisplay';
+import { Card } from '@/components/layout/Card';
 
 interface BrandCardProps {
   item: BubbleThing & Brand;
@@ -13,53 +15,17 @@ interface BrandCardProps {
 
 // Component for brand logo with fallback
 const BrandLogo = ({ brand }: { brand: BubbleThing & Brand }) => {
-  const [imageError, setImageError] = useState(false);
-  
-  // Fix protocol-relative URLs (starting with //)
-  const getImageUrl = (url: string | undefined): string | null => {
-    if (!url) return null;
-    
-    // If URL starts with //, add https:
-    if (url.startsWith('//')) {
-      return `https:${url}`;
-    }
-    
-    return url;
-  };
-  
-  const logoUrl = getImageUrl(brand.image);
-  
-  if (logoUrl && !imageError) {
-    return (
-      <Image
-        source={{ uri: logoUrl }}
-        style={styles.brandLogo}
-        onError={() => setImageError(true)}
-      />
-    );
-  }
-  
-  // Fallback placeholder
   return (
-    <ThemedView style={styles.logoPlaceholder}>
-      <ThemedText type="defaultSemiBold" style={styles.placeholderText}>
-        {(brand.brandname ?? "BR").charAt(0).toUpperCase()}
-      </ThemedText>
-    </ThemedView>
+    <ImageWithFallback
+      url={brand.image}
+      style={styles.brandLogo}
+      fallbackText={(brand.brandname ?? "BR").charAt(0).toUpperCase()}
+      fallbackStyle={styles.logoPlaceholder}
+      fallbackTextStyle={styles.placeholderText}
+    />
   );
 };
 
-// Component for contact count display
-const ContactCount = ({ contactCount }: { contactCount?: number }) => {
-  const count = contactCount || 0;
-  
-  return (
-    <ThemedView style={styles.contactCount}>
-      <IconSymbol size={14} name="person.2.fill" color="#666" />
-      <ThemedText style={styles.contactCountText}>{count}</ThemedText>
-    </ThemedView>
-  );
-};
 
 // Component for niche badge (shows only first niche to save space)
 const NicheBadges = ({ niches }: { niches?: string[] }) => {
@@ -86,7 +52,7 @@ export default function BrandCard({ item, onPress }: BrandCardProps) {
   };
 
   const CardContent = (
-    <ThemedView style={styles.brandCard}>
+    <>
       <BrandLogo brand={item} />
       <ThemedView style={styles.brandInfo}>
         <ThemedView style={styles.titleRow}>
@@ -99,30 +65,24 @@ export default function BrandCard({ item, onPress }: BrandCardProps) {
           <ThemedText style={styles.subtitle}>
             {item.legalname || 'Company'}
           </ThemedText>
-          <ContactCount contactCount={item["contact-count"]} />
+          <ContactCount count={item["contact-count"]} style={styles.contactCount} textStyle={styles.contactCountText} />
         </ThemedView>
       </ThemedView>
-    </ThemedView>
+    </>
   );
 
-  // Always wrap in TouchableOpacity for navigation
+  // Use shared Card component
   return (
-    <TouchableOpacity onPress={handlePress}>
+    <Card onPress={handlePress} style={styles.cardOverride}>
       {CardContent}
-    </TouchableOpacity>
+    </Card>
   );
 }
 
 const styles = StyleSheet.create({
-  brandCard: {
+  cardOverride: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    marginBottom: 12,
-    borderRadius: 12,
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.08)',
   },
   brandLogo: {
     width: 60,
@@ -171,14 +131,10 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   contactCount: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
+    // Styling for ContactCount component
   },
   contactCountText: {
-    fontSize: 12,
-    color: '#666',
-    fontWeight: '500',
+    // Styling for ContactCount text
   },
   nicheBadge: {
     backgroundColor: 'rgba(99, 102, 241, 0.1)',

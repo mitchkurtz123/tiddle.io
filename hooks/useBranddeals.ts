@@ -1,17 +1,21 @@
 // hooks/useBranddeals.ts
-import { useQuery } from "@tanstack/react-query";
-import { listBranddealsSimple } from "../services/bubbleAPI";
+import { listBranddealsSimple, BubbleThing, BrandDeal } from "../services/bubbleAPI";
+import { useApiQuery } from "@/hooks/shared/useApiQuery";
 
 export function useBranddeals(createdByUserId: string | null) {
-  return useQuery({
-    queryKey: ["branddeals", createdByUserId],
-    queryFn: () => {
+  return useApiQuery<(BubbleThing & BrandDeal)[]>(
+    ["branddeals", createdByUserId],
+    () => {
       if (!createdByUserId) {
         throw new Error("User ID is required to fetch branddeals");
       }
       return listBranddealsSimple(createdByUserId);
     },
-    staleTime: 30_000, // 30 seconds - consistent with useUsers
-    enabled: !!createdByUserId, // Only run query if we have a user ID
-  });
+    {
+      enabled: !!createdByUserId, // Only run query if we have a user ID
+      config: {
+        staleTime: 30_000, // 30 seconds - consistent with useUsers
+      },
+    }
+  );
 }

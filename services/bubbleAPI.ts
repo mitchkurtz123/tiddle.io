@@ -65,6 +65,19 @@ export type Instance0963 = {
   // add more fields as needed from your Bubble instance0963 datatype
 };
 
+/** Brand shape for displaying user's brands */
+export type Brand = {
+  brandname?: string; // Brand name
+  legalname?: string; // Legal entity name
+  image?: string; // URL to brand logo
+  niche?: string[]; // Brand industry/category (list of texts)
+  classification?: string; // Direct, Agency, Music
+  notes?: string; // Brand description
+  "contact-count"?: number; // Denormalized contact count for quick display
+  "created-by"?: string; // User ID reference (matches Bubble field name)
+  // add more fields as needed from your Bubble brand datatype
+};
+
 /** Axios client with dynamic Bearer token from SecureStore */
 export const bubbleClient = axios.create({
   baseURL: BASE_URL,
@@ -433,6 +446,62 @@ export async function updateInstance({
     return res.data;
   } catch (e) {
     console.error('Error updating instance:', e);
+    throw normalizeBubbleError(e);
+  }
+}
+
+/** ===== BRANDS: fetch brands created by current user ===== */
+
+/**
+ * List all brands without user filtering.
+ * Clean, simple version that loads all available brands.
+ */
+export async function listBrands(
+  limit: number = 100,
+  cursor: number = 0
+): Promise<{
+  results: (BubbleThing & Brand)[];
+  cursor: number;
+  remaining: number;
+  count: number;
+}> {
+  try {
+    // Create simple axios instance (no headers, no auth - matches Postman)
+    const simpleClient = axios.create({
+      baseURL: BASE_URL,
+      timeout: 15000,
+      // No headers at all - just like Postman
+    });
+    
+    // Simple GET request to /brand endpoint without constraints
+    const res = await simpleClient.get<BubbleListResponse<Brand>>("/brand", {
+      params: { limit, cursor },
+    });
+    
+    const r = res.data?.response ?? {};
+    return {
+      results: r.results ?? [],
+      cursor: r.cursor ?? 0,
+      remaining: r.remaining ?? 0,
+      count: r.count ?? (r.results?.length ?? 0),
+    };
+  } catch (e) {
+    throw normalizeBubbleError(e);
+  }
+}
+
+/** Convenience helper if you only care about the array (no pagination meta) */
+export async function listBrandsSimple(limit = 100, cursor = 0) {
+  const { results } = await listBrands(limit, cursor);
+  return results;
+}
+
+/** Get a single brand by Bubble unique id */
+export async function getBrandById(id: string): Promise<BubbleThing & Brand> {
+  try {
+    const res = await bubbleClient.get<BubbleGetResponse<Brand>>(`/brand/${id}`);
+    return res.data.response;
+  } catch (e) {
     throw normalizeBubbleError(e);
   }
 }

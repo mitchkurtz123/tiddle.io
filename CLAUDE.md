@@ -100,6 +100,7 @@ The app uses Bubble.io as the backend service for authentication and user data m
 - **Bubble.io API** for complete authentication and user management backend
 - **Expo SecureStore** for secure authentication token storage
 - **React Context API** for global authentication state management
+- **React Native SVG** for scalable platform icons and vector graphics
 - **Reanimated & Gesture Handler** for animations and haptic feedback
 - **ESLint** with Expo flat config
 

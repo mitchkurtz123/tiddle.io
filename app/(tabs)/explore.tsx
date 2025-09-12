@@ -1,110 +1,260 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
-
-import { Collapsible } from '@/components/Collapsible';
-import { ExternalLink } from '@/components/ExternalLink';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
+import { ActivityIndicator, FlatList, StyleSheet, RefreshControl, TouchableOpacity } from 'react-native';
+import { useState } from 'react';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { IconSymbol } from '@/components/ui/IconSymbol';
+import { useBrands } from '@/hooks/useBrands';
+import { Brand, BubbleThing } from '@/services/bubbleAPI';
+import BrandCard from '@/components/brand/BrandCard';
+import SearchBar from '@/components/common/SearchBar';
+import BrandHeader from '@/components/brand/BrandHeader';
+import EmptyState from '@/components/common/EmptyState';
 
-export default function TabTwoScreen() {
+
+// Classification filter options
+type ClassificationOption = 'all' | 'direct' | 'agency' | 'music';
+
+// Search and sort logic for brands
+const searchAndSortBrands = (brands: (BubbleThing & Brand)[], searchQuery: string = '', classificationFilter: ClassificationOption = 'all') => {
+  let filtered = [...brands];
+  
+  // Filter by classification first
+  if (classificationFilter !== 'all') {
+    filtered = filtered.filter(item => 
+      item.classification?.toLowerCase() === classificationFilter.toLowerCase()
+    );
+  }
+  
+  // Filter by search query (brandname only)
+  if (searchQuery.trim()) {
+    const query = searchQuery.toLowerCase().trim();
+    filtered = filtered.filter(item => 
+      item.brandname?.toLowerCase().includes(query)
+    );
+  }
+  
+  // Sort alphabetically by brandname
+  return filtered.sort((a, b) => {
+    const aName = a.brandname?.toLowerCase() || '';
+    const bName = b.brandname?.toLowerCase() || '';
+    return aName.localeCompare(bName);
+  });
+};
+
+
+// Classification Toggle Component
+const ClassificationToggle = ({ 
+  selected, 
+  onSelect 
+}: { 
+  selected: ClassificationOption; 
+  onSelect: (option: ClassificationOption) => void; 
+}) => {
+  const options: { key: ClassificationOption; label: string }[] = [
+    { key: 'all', label: 'All' },
+    { key: 'direct', label: 'Brand' },
+    { key: 'agency', label: 'Agency' },
+    { key: 'music', label: 'Music' },
+  ];
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
-      headerImage={
-        <IconSymbol
-          size={310}
-          color="#808080"
-          name="chevron.left.forwardslash.chevron.right"
-          style={styles.headerImage}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Explore</ThemedText>
-      </ThemedView>
-      <ThemedText>This app includes example code to help you get started.</ThemedText>
-      <Collapsible title="File-based routing">
-        <ThemedText>
-          This app has two screens:{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/explore.tsx</ThemedText>
-        </ThemedText>
-        <ThemedText>
-          The layout file in <ThemedText type="defaultSemiBold">app/(tabs)/_layout.tsx</ThemedText>{' '}
-          sets up the tab navigator.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/router/introduction">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Android, iOS, and web support">
-        <ThemedText>
-          You can open this project on Android, iOS, and the web. To open the web version, press{' '}
-          <ThemedText type="defaultSemiBold">w</ThemedText> in the terminal running this project.
-        </ThemedText>
-      </Collapsible>
-      <Collapsible title="Images">
-        <ThemedText>
-          For static images, you can use the <ThemedText type="defaultSemiBold">@2x</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">@3x</ThemedText> suffixes to provide files for
-          different screen densities
-        </ThemedText>
-        <Image source={require('@/assets/images/react-logo.png')} style={{ alignSelf: 'center' }} />
-        <ExternalLink href="https://reactnative.dev/docs/images">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Custom fonts">
-        <ThemedText>
-          Open <ThemedText type="defaultSemiBold">app/_layout.tsx</ThemedText> to see how to load{' '}
-          <ThemedText style={{ fontFamily: 'SpaceMono' }}>
-            custom fonts such as this one.
+    <ThemedView style={styles.toggleContainer}>
+      {options.map((option) => (
+        <TouchableOpacity
+          key={option.key}
+          style={[
+            styles.toggleButton,
+            selected === option.key && styles.toggleButtonActive
+          ]}
+          onPress={() => onSelect(option.key)}
+        >
+          <ThemedText style={[
+            styles.toggleText,
+            selected === option.key && styles.toggleTextActive
+          ]}>
+            {option.label}
           </ThemedText>
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/versions/latest/sdk/font">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Light and dark mode components">
-        <ThemedText>
-          This template has light and dark mode support. The{' '}
-          <ThemedText type="defaultSemiBold">useColorScheme()</ThemedText> hook lets you inspect
-          what the user&apos;s current color scheme is, and so you can adjust UI colors accordingly.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/develop/user-interface/color-themes/">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Animations">
-        <ThemedText>
-          This template includes an example of an animated component. The{' '}
-          <ThemedText type="defaultSemiBold">components/HelloWave.tsx</ThemedText> component uses
-          the powerful <ThemedText type="defaultSemiBold">react-native-reanimated</ThemedText>{' '}
-          library to create a waving hand animation.
-        </ThemedText>
-        {Platform.select({
-          ios: (
-            <ThemedText>
-              The <ThemedText type="defaultSemiBold">components/ParallaxScrollView.tsx</ThemedText>{' '}
-              component provides a parallax effect for the header image.
-            </ThemedText>
-          ),
-        })}
-      </Collapsible>
-    </ParallaxScrollView>
+        </TouchableOpacity>
+      ))}
+    </ThemedView>
+  );
+};
+
+export default function BrandsScreen() {
+  const { data, isLoading, error, refetch } = useBrands();
+  const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [classificationFilter, setClassificationFilter] = useState<ClassificationOption>('all');
+  
+  // Apply search and sorting to the data
+  const filteredData = data ? searchAndSortBrands(data, searchQuery, classificationFilter) : [];
+  
+  // Calculate count information for enhanced UX
+  const isSearching = searchQuery.trim().length > 0;
+  const isFiltering = classificationFilter !== 'all';
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await refetch();
+    } catch (error) {
+      console.error('Failed to refresh brands:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+
+  const clearSearch = () => {
+    setSearchQuery('');
+  };
+
+  const handleNewBrand = () => {
+    // TODO: Navigate to brand creation screen when implemented
+    console.log('Navigate to new brand creation');
+  };
+
+  const getSearchPlaceholder = () => {
+    return 'Search brands...';
+  };
+
+  const getCountText = () => {
+    if (isSearching || isFiltering) {
+      return `${filteredData.length} of ${data?.length || 0} brands`;
+    }
+    return `${filteredData.length} brands`;
+  };
+
+  if (isLoading) {
+    return (
+      <ThemedView style={styles.centerContainer}>
+        <ActivityIndicator size="large" />
+        <ThemedText style={styles.loadingText}>Loading your brands...</ThemedText>
+      </ThemedView>
+    );
+  }
+
+  if (error) {
+    return (
+      <ThemedView style={styles.centerContainer}>
+        <ThemedText type="title" style={styles.errorTitle}>Oops!</ThemedText>
+        <ThemedText style={styles.errorText}>Failed to load brands</ThemedText>
+      </ThemedView>
+    );
+  }
+
+  return (
+    <ThemedView style={styles.container}>
+      <BrandHeader
+        title="My Brands"
+        count={getCountText()}
+        onNewPress={handleNewBrand}
+      />
+
+      {/* Search Bar */}
+      <SearchBar
+        value={searchQuery}
+        onChangeText={setSearchQuery}
+        placeholder={getSearchPlaceholder()}
+        onClear={clearSearch}
+      />
+
+      {/* Classification Toggle */}
+      <ClassificationToggle
+        selected={classificationFilter}
+        onSelect={setClassificationFilter}
+      />
+      
+      {filteredData.length === 0 ? (
+        <EmptyState
+          title={isSearching ? 'No matching brands' : 'No brands yet'}
+          message={
+            isSearching 
+              ? `No brands match "${searchQuery}".`
+              : 'Your brands will appear here once you create them.'
+          }
+        />
+      ) : (
+        <FlatList
+          data={filteredData}
+          keyExtractor={(item) => item._id}
+          contentContainerStyle={styles.listContainer}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor="#6366f1"
+              colors={["#6366f1"]}
+            />
+          }
+          renderItem={({ item }) => (
+            <BrandCard item={item} />
+          )}
+        />
+      )}
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  headerImage: {
-    color: '#808080',
-    bottom: -90,
-    left: -35,
-    position: 'absolute',
+  container: {
+    flex: 1,
+    paddingTop: 80, // Increased safe area padding for better spacing
   },
-  titleContainer: {
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  loadingText: {
+    marginTop: 12,
+    textAlign: 'center',
+  },
+  errorTitle: {
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  errorText: {
+    textAlign: 'center',
+  },
+  listContainer: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+  },
+  toggleContainer: {
     flexDirection: 'row',
-    gap: 8,
+    marginHorizontal: 20,
+    marginBottom: 16,
+    backgroundColor: 'rgba(120, 120, 128, 0.12)',
+    borderRadius: 9,
+    padding: 2,
+  },
+  toggleButton: {
+    flex: 1,
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 7,
+    alignItems: 'center',
+  },
+  toggleButtonActive: {
+    backgroundColor: 'white',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.13,
+    shadowRadius: 1,
+    elevation: 2,
+  },
+  toggleText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: 'rgba(60, 60, 67, 0.6)',
+  },
+  toggleTextActive: {
+    color: '#6366f1',
+    fontWeight: '600',
   },
 });

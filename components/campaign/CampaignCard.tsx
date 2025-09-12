@@ -1,8 +1,9 @@
-import React from 'react';
-import { StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { StyleSheet, TouchableOpacity } from 'react-native';
 import { router } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { IconSymbol } from '@/components/ui/IconSymbol';
 import { BrandDeal, BubbleThing } from '@/services/bubbleAPI';
 import { ImageWithFallback } from '@/components/shared/ImageWithFallback';
 import { UserCount as SharedUserCount } from '@/components/shared/CountDisplay';
@@ -12,6 +13,7 @@ import { Card } from '@/components/layout/Card';
 interface CampaignCardProps {
   item: BubbleThing & BrandDeal;
   onPress?: (item: BubbleThing & BrandDeal) => void;
+  onEdit?: (item: BubbleThing & BrandDeal) => void;
 }
 
 // Component for branddeal image with fallback
@@ -114,13 +116,21 @@ const LegacyStatusBadge = ({ status }: { status?: string }) => {
   );
 };
 
-export default function CampaignCard({ item, onPress }: CampaignCardProps) {
+export default function CampaignCard({ item, onPress, onEdit }: CampaignCardProps) {
   const handlePress = () => {
     // If custom onPress is provided, use it; otherwise navigate to detail screen
     if (onPress) {
       onPress(item);
     } else {
       router.push(`/brand-deal/${item._id}`);
+    }
+  };
+
+  const handleEditPress = (event: any) => {
+    // Prevent the card's onPress from triggering
+    event.stopPropagation();
+    if (onEdit) {
+      onEdit(item);
     }
   };
 
@@ -138,7 +148,14 @@ export default function CampaignCard({ item, onPress }: CampaignCardProps) {
           <ThemedText style={styles.subtitle}>
             {item.brandname || 'Brand'}
           </ThemedText>
-          <UserCount userList={item["user-list"]} />
+          <ThemedView style={styles.rightSection}>
+            <UserCount userList={item["user-list"]} />
+            {onEdit && (
+              <TouchableOpacity onPress={handleEditPress} style={styles.menuButton}>
+                <IconSymbol size={16} name="ellipsis" color="#666" />
+              </TouchableOpacity>
+            )}
+          </ThemedView>
         </ThemedView>
       </ThemedView>
     </>
@@ -212,6 +229,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
     fontWeight: '500',
+  },
+  rightSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  menuButton: {
+    padding: 4,
+    borderRadius: 4,
   },
   statusBadge: {
     paddingHorizontal: 6,

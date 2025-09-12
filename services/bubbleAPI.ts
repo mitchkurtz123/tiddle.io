@@ -1,6 +1,6 @@
 // services/bubbleAPI.ts
 import axios, { AxiosError } from "axios";
-import { getAuthToken } from "./auth";
+import { getAuthToken, getUserId } from "./auth";
 
 /**
  * Base config
@@ -469,47 +469,151 @@ export async function createInstance({
 export async function createBranddeal({
   title,
   deliverables,
-  kabanStatus,
   brand,
-  brandContacts,
-  agency,
+  brandContact,
+  kabanStatus,
 }: {
   title: string;
   deliverables?: string;
-  kabanStatus: string;
   brand: string;
-  brandContacts?: string[];
-  agency?: string;
+  brandContact: string;
+  kabanStatus: string;
 }): Promise<any> {
   try {
-    console.log('Creating branddeal with data:', {
+    // Get authentication information for proper "createdby" field
+    const token = await getAuthToken();
+    const userId = await getUserId();
+
+    const requestBody = {
+      title,
+      deliverables: deliverables || '',
+      brand,
+      brandcontact: brandContact,
+      "kaban-status": kabanStatus.split(' ').map(word => 
+        word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+      ).join(' '),
+    };
+
+    console.log('=== CREATE BRANDDEAL REQUEST ===');
+    console.log('URL:', `${WF_BASE}/create-branddeal`);
+    console.log('Method: POST');
+    console.log('Headers:', {
+      'Content-Type': 'application/json',
+      'Authorization': token ? `Bearer ${token.substring(0, 10)}...` : 'Bearer null',
+    });
+    console.log('Request Body:', JSON.stringify(requestBody, null, 2));
+    console.log('Input Parameters:', {
       title,
       deliverables,
-      kabanStatus,
       brand,
-      brandContacts,
-      agency,
+      brandContact,
+      kabanStatus,
     });
+    console.log('Authentication Info:', {
+      token: token ? `${token.substring(0, 10)}...` : 'null',
+      userId: userId || 'null',
+    });
+    console.log('================================');
 
-    // Create simple axios instance (no headers, no auth)
-    const simpleClient = axios.create({
+    // Create axios instance with Authorization Bearer token
+    const authClient = axios.create({
       baseURL: WF_BASE,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
       timeout: 15000,
     });
 
-    const res = await simpleClient.post('/create-branddeal', {
-      title,
-      deliverables,
-      "kaban-status": kabanStatus,
-      brand,
-      "brand-contacts": brandContacts,
-      agency,
-    });
+    const res = await authClient.post('/create-branddeal', requestBody);
 
     console.log('Branddeal created successfully:', res.data);
     return res.data;
   } catch (e) {
     console.error('Error creating branddeal:', e);
+    throw normalizeBubbleError(e);
+  }
+}
+
+/** ===== UPDATE BRANDDEAL: workflow endpoint for updating existing campaigns ===== */
+
+/**
+ * Update an existing branddeal/campaign using the workflow endpoint
+ */
+export async function updateBranddeal({
+  branddealId,
+  title,
+  deliverables,
+  brand,
+  brandContact,
+  kabanStatus,
+}: {
+  branddealId: string;
+  title?: string;
+  deliverables?: string;
+  brand?: string;
+  brandContact?: string;
+  kabanStatus?: string;
+}): Promise<any> {
+  try {
+    // Get authentication information
+    const token = await getAuthToken();
+    const userId = await getUserId();
+
+    // Build request body with only provided fields
+    const requestBody: any = {
+      branddeal: branddealId, // ID of the branddeal to update
+    };
+
+    // Add optional fields if provided
+    if (title !== undefined) requestBody.title = title;
+    if (deliverables !== undefined) requestBody.deliverables = deliverables;
+    if (brand !== undefined) requestBody.brand = brand;
+    if (brandContact !== undefined) requestBody.brandcontact = brandContact;
+    if (kabanStatus !== undefined) {
+      requestBody["kaban-status"] = kabanStatus.split(' ').map(word => 
+        word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+      ).join(' ');
+    }
+
+    console.log('=== UPDATE BRANDDEAL REQUEST ===');
+    console.log('URL:', `${WF_BASE}/update-branddeal`);
+    console.log('Method: POST');
+    console.log('Headers:', {
+      'Content-Type': 'application/json',
+      'Authorization': token ? `Bearer ${token.substring(0, 10)}...` : 'Bearer null',
+    });
+    console.log('Request Body:', JSON.stringify(requestBody, null, 2));
+    console.log('Input Parameters:', {
+      branddealId,
+      title,
+      deliverables,
+      brand,
+      brandContact,
+      kabanStatus,
+    });
+    console.log('Authentication Info:', {
+      token: token ? `${token.substring(0, 10)}...` : 'null',
+      userId: userId || 'null',
+    });
+    console.log('================================');
+
+    // Create axios instance with Authorization Bearer token
+    const authClient = axios.create({
+      baseURL: WF_BASE,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      timeout: 15000,
+    });
+
+    const res = await authClient.post('/update-branddeal', requestBody);
+
+    console.log('Branddeal updated successfully:', res.data);
+    return res.data;
+  } catch (e) {
+    console.error('Error updating branddeal:', e);
     throw normalizeBubbleError(e);
   }
 }

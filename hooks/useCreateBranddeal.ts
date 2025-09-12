@@ -5,10 +5,9 @@ import { createBranddeal } from '@/services/bubbleAPI';
 interface CreateBranddealData {
   title: string;
   deliverables?: string;
-  kabanStatus: string;
   brand: string;
-  brandContacts?: string[];
-  agency?: string;
+  brandContact: string;
+  kabanStatus: string;
 }
 
 export function useCreateBranddeal() {

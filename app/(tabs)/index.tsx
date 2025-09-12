@@ -79,6 +79,15 @@ export default function HomeScreen() {
   const [dropdownVisible, setDropdownVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateCampaign, setShowCreateCampaign] = useState(false);
+  const [editCampaign, setEditCampaign] = useState<(BubbleThing & BrandDeal) | null>(null);
+  
+  const handleEditCampaign = (campaign: BubbleThing & BrandDeal) => {
+    setEditCampaign(campaign);
+  };
+
+  const handleCloseEditCampaign = () => {
+    setEditCampaign(null);
+  };
   
   // Apply filtering and sorting to the data
   const filteredData = data ? filterAndSortBranddeals(data, filterBy, searchQuery) : [];
@@ -218,7 +227,7 @@ export default function HomeScreen() {
             />
           }
           renderItem={({ item }) => (
-            <CampaignCard item={item} />
+            <CampaignCard item={item} onEdit={handleEditCampaign} />
           )}
         />
       )}
@@ -227,6 +236,13 @@ export default function HomeScreen() {
       <CreateCampaignSheet
         visible={showCreateCampaign}
         onClose={() => setShowCreateCampaign(false)}
+      />
+
+      {/* Edit Campaign Sheet */}
+      <CreateCampaignSheet
+        visible={!!editCampaign}
+        onClose={handleCloseEditCampaign}
+        editItem={editCampaign}
       />
     </ThemedView>
   );

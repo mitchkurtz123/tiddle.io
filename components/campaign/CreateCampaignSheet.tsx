@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   Modal,
@@ -12,17 +12,21 @@ import {
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { IconSymbol } from '@/components/ui/IconSymbol';
-import { Brand, BubbleThing } from '@/services/bubbleAPI';
+import { Brand, BubbleThing, BrandDeal } from '@/services/bubbleAPI';
 import { useCreateBranddeal } from '@/hooks/useCreateBranddeal';
+import { useUpdateBranddeal } from '@/hooks/useUpdateBranddeal';
+import { useBrands } from '@/hooks/useBrands';
+import { useBrandContactsList } from '@/hooks/useBrandContactsList';
 import BrandSearchSelector from './BrandSearchSelector';
 import ContactSelector from './ContactSelector';
 
 interface CreateCampaignSheetProps {
   visible: boolean;
   onClose: () => void;
+  editItem?: (BubbleThing & BrandDeal) | null; // If provided, we're in edit mode
 }
 
-const kabanStatuses = ['roster', 'waiting', 'in progress', 'invoiced', 'complete', 'canceled'];
+const kabanStatuses = ['Roster', 'Waiting', 'In Progress', 'Invoiced', 'Complete', 'Canceled'];
 
 // Status color mapping (matches campaign card colors)
 const getStatusStyle = (status: string) => {
@@ -72,7 +76,7 @@ const getStatusStyle = (status: string) => {
   }
 };
 
-export default function CreateCampaignSheet({ visible, onClose }: CreateCampaignSheetProps) {
+export default function CreateCampaignSheet({ visible, onClose, editItem }: CreateCampaignSheetProps) {
   const [formData, setFormData] = useState({
     title: '',
     deliverables: '',
@@ -84,6 +88,71 @@ export default function CreateCampaignSheet({ visible, onClose }: CreateCampaign
   });
 
   const createMutation = useCreateBranddeal();
+  const updateMutation = useUpdateBranddeal();
+  const { data: brands } = useBrands();
+  const { data: contacts } = useBrandContactsList();
+  
+  const isEditMode = !!editItem;
+
+  // Populate form data when editing
+  useEffect(() => {
+    if (isEditMode && editItem && visible && brands && contacts) {
+      // Find the contact(s) associated with this campaign
+      const campaignContactIds = editItem["brand-contacts"] || [];
+      const campaignContact = campaignContactIds.length > 0 ? campaignContactIds[0] : null;
+      const contactData = campaignContact ? contacts.find(contact => contact._id === campaignContact) : null;
+      
+      // Determine mode based on the agency field in the campaign
+      let isAgencyMode = false;
+      let selectedBrand = null;
+      let selectedAgency = null;
+      
+      if (editItem.agency) {
+        // Agency mode: editItem.agency exists
+        isAgencyMode = true;
+        selectedBrand = brands.find(brand => brand._id === editItem.brand) || null;
+        selectedAgency = brands.find(brand => brand._id === editItem.agency) || null;
+      } else {
+        // Direct mode: no agency field
+        isAgencyMode = false;
+        selectedBrand = brands.find(brand => brand._id === editItem.brand) || null;
+        selectedAgency = null;
+      }
+      
+      console.log('Edit mode resolution:', {
+        campaignId: editItem._id,
+        brandId: editItem.brand,
+        agencyId: editItem.agency,
+        contactIds: editItem["brand-contacts"],
+        selectedBrand: selectedBrand?.brandname,
+        selectedAgency: selectedAgency?.brandname,
+        contactData: contactData?.name,
+        isAgencyMode,
+        campaignContact
+      });
+      
+      setFormData({
+        title: editItem.title || '',
+        deliverables: editItem.deliverables || '',
+        kabanStatus: editItem["kaban-status"] || 'roster',
+        selectedBrand: selectedBrand || null,
+        isAgencyMode,
+        selectedAgency,
+        selectedContact: campaignContact,
+      });
+    } else if (!isEditMode && visible) {
+      // Reset form for create mode
+      setFormData({
+        title: '',
+        deliverables: '',
+        kabanStatus: 'roster',
+        selectedBrand: null,
+        isAgencyMode: false,
+        selectedAgency: null,
+        selectedContact: null,
+      });
+    }
+  }, [isEditMode, editItem, visible, brands, contacts]);
 
   const handleBrandSelect = (brand: (BubbleThing & Brand) | null) => {
     setFormData(prev => ({
@@ -131,10 +200,6 @@ export default function CreateCampaignSheet({ visible, onClose }: CreateCampaign
       return;
     }
 
-    if (formData.isAgencyMode && !formData.selectedAgency) {
-      Alert.alert('Error', 'Please select an agency');
-      return;
-    }
 
     if (!formData.selectedContact) {
       Alert.alert('Error', 'Please select a contact');
@@ -142,14 +207,26 @@ export default function CreateCampaignSheet({ visible, onClose }: CreateCampaign
     }
 
     try {
-      await createMutation.mutateAsync({
-        title: formData.title,
-        deliverables: formData.deliverables,
-        kabanStatus: formData.kabanStatus,
-        brand: formData.selectedBrand._id,
-        brandContacts: [formData.selectedContact],
-        agency: formData.isAgencyMode && formData.selectedAgency ? formData.selectedAgency._id : undefined,
-      });
+      if (isEditMode && editItem) {
+        // Update existing campaign
+        await updateMutation.mutateAsync({
+          branddealId: editItem._id,
+          title: formData.title,
+          deliverables: formData.deliverables,
+          brand: formData.selectedBrand._id,
+          brandContact: formData.selectedContact,
+          kabanStatus: formData.kabanStatus,
+        });
+      } else {
+        // Create new campaign
+        await createMutation.mutateAsync({
+          title: formData.title,
+          deliverables: formData.deliverables,
+          brand: formData.selectedBrand._id,
+          brandContact: formData.selectedContact,
+          kabanStatus: formData.kabanStatus,
+        });
+      }
 
       // Reset form and close
       setFormData({
@@ -163,13 +240,12 @@ export default function CreateCampaignSheet({ visible, onClose }: CreateCampaign
       });
       onClose();
     } catch {
-      Alert.alert('Error', 'Failed to create campaign. Please try again.');
+      Alert.alert('Error', `Failed to ${isEditMode ? 'update' : 'create'} campaign. Please try again.`);
     }
   };
 
   const isFormValid = formData.title.trim() && 
                      formData.selectedBrand && 
-                     (!formData.isAgencyMode || formData.selectedAgency) &&
                      formData.selectedContact;
 
   return (
@@ -183,7 +259,7 @@ export default function CreateCampaignSheet({ visible, onClose }: CreateCampaign
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
             <IconSymbol size={20} name="xmark" color="#666" />
           </TouchableOpacity>
-          <ThemedText type="title" style={styles.title}>New Campaign</ThemedText>
+          <ThemedText type="title" style={styles.title}>{isEditMode ? 'Edit Campaign' : 'New Campaign'}</ThemedText>
           <ThemedView style={styles.headerSpacer} />
         </ThemedView>
 
@@ -317,13 +393,16 @@ export default function CreateCampaignSheet({ visible, onClose }: CreateCampaign
           <TouchableOpacity
             style={[
               styles.submitButton,
-              (!isFormValid || createMutation.isPending) && styles.submitButtonDisabled
+              (!isFormValid || createMutation.isPending || updateMutation.isPending) && styles.submitButtonDisabled
             ]}
             onPress={handleSubmit}
-            disabled={!isFormValid || createMutation.isPending}
+            disabled={!isFormValid || createMutation.isPending || updateMutation.isPending}
           >
             <ThemedText style={styles.submitButtonText}>
-              {createMutation.isPending ? 'Creating...' : 'Create Campaign'}
+              {(createMutation.isPending || updateMutation.isPending) 
+                ? (isEditMode ? 'Updating...' : 'Creating...') 
+                : (isEditMode ? 'Update Campaign' : 'Create Campaign')
+              }
             </ThemedText>
           </TouchableOpacity>
         </ThemedView>

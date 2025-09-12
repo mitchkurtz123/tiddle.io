@@ -71,11 +71,69 @@ export type Brand = {
   legalname?: string; // Legal entity name
   image?: string; // URL to brand logo
   niche?: string[]; // Brand industry/category (list of texts)
-  classification?: string; // Direct, Agency, Music
+  classification?: 'direct' | 'agency' | 'music'; // Brand classification
   notes?: string; // Brand description
   "contact-count"?: number; // Denormalized contact count for quick display
   "created-by"?: string; // User ID reference (matches Bubble field name)
+  
+  // Agency relationship fields (Option A - using existing Bubble structure)
+  "agency-brands"?: string[]; // For agencies: array of brand IDs they manage
+  "parent-agency"?: string; // For brands: ID of parent agency (derived from agency-brands)
+  "brandContacts"?: string[]; // Array of contact IDs associated with this brand
+  
+  // Basic contact information
+  website?: string; // Agency/brand website
+  phone?: string; // Primary phone number
+  "founded-date"?: string; // When agency/brand was founded
+  
+  // Agency-specific business information
+  "employee-count"?: number; // Number of employees
+  "annual-revenue"?: number; // Annual revenue
+  "commission-rate"?: number; // Agency commission percentage
+  
+  // Billing & Payment fields
+  "stripe-customer-id"?: string; // Stripe customer ID
+  "stripe-account-id"?: string; // Stripe connected account ID
+  "payment-method"?: string; // Default payment method
+  "billing-email"?: string; // Billing contact email
+  "billing-address"?: {
+    line1?: string;
+    line2?: string;
+    city?: string;
+    state?: string;
+    postal_code?: string;
+    country?: string;
+  }; // Billing address object
+  "tax-id"?: string; // Tax identification number
+  "invoice-prefix"?: string; // Custom invoice prefix
+  "payment-terms"?: string; // NET-30, NET-60, etc.
+  
+  // Computed helper fields
+  "brand-count"?: number; // For agencies: count of managed brands
+  "is-agency"?: boolean; // Helper flag for quick agency identification
   // add more fields as needed from your Bubble brand datatype
+};
+
+/** Brand Contact shape for managing brand contacts */
+export type BrandContact = {
+  name?: string; // Contact full name
+  email?: string; // Contact email address
+  phone?: string; // Contact phone number
+  role?: string; // Job role/title (Marketing Manager, etc.)
+  title?: string; // Official job title
+  
+  // Relationship fields
+  "brand-id"?: string; // Brand this contact belongs to
+  "agency-id"?: string; // Agency this contact works for (if applicable)
+  
+  // Status and metadata
+  status?: 'active' | 'inactive' | 'archived'; // Contact status
+  "is-primary"?: boolean; // Primary contact flag
+  avatar?: string; // URL to contact photo
+  notes?: string; // Additional notes about contact
+  "last-contacted"?: string; // Last contact date
+  "created-by"?: string; // User ID reference
+  // add more fields as needed from your Bubble brandcontact datatype
 };
 
 /** Axios client with dynamic Bearer token from SecureStore */
@@ -493,7 +551,7 @@ export async function listBrands(
 /** Convenience helper if you only care about the array (no pagination meta) */
 export async function listBrandsSimple(limit = 100, cursor = 0) {
   const { results } = await listBrands(limit, cursor);
-  return results;
+  return enhanceBrandsWithAgencyData(results);
 }
 
 /** Get a single brand by Bubble unique id */
@@ -504,5 +562,156 @@ export async function getBrandById(id: string): Promise<BubbleThing & Brand> {
   } catch (e) {
     throw normalizeBubbleError(e);
   }
+}
+
+/** ===== BRAND CONTACTS: fetch and manage brand contacts ===== */
+
+/**
+ * List brand contacts with optional filtering by brand
+ */
+export async function listBrandContacts(
+  limit: number = 100,
+  cursor: number = 0,
+  brandId?: string
+): Promise<{
+  results: (BubbleThing & BrandContact)[];
+  cursor: number;
+  remaining: number;
+  count: number;
+}> {
+  try {
+    const simpleClient = axios.create({
+      baseURL: BASE_URL,
+      timeout: 15000,
+    });
+    
+    let constraints;
+    if (brandId) {
+      constraints = encodeConstraints([
+        { key: "brand-id", constraint_type: "equals", value: brandId },
+      ]);
+    }
+    
+    const url = constraints ? `/brandcontact?constraints=${constraints}&limit=${limit}&cursor=${cursor}` : `/brandcontact?limit=${limit}&cursor=${cursor}`;
+    const res = await simpleClient.get<BubbleListResponse<BrandContact>>(url);
+    
+    const r = res.data?.response ?? {};
+    return {
+      results: r.results ?? [],
+      cursor: r.cursor ?? 0,
+      remaining: r.remaining ?? 0,
+      count: r.count ?? (r.results?.length ?? 0),
+    };
+  } catch (e) {
+    throw normalizeBubbleError(e);
+  }
+}
+
+/** Convenience helper if you only care about the array (no pagination meta) */
+export async function listBrandContactsSimple(limit = 100, cursor = 0, brandId?: string) {
+  const { results } = await listBrandContacts(limit, cursor, brandId);
+  return results;
+}
+
+/** Get a single brand contact by Bubble unique id */
+export async function getBrandContactById(id: string): Promise<BubbleThing & BrandContact> {
+  try {
+    const res = await bubbleClient.get<BubbleGetResponse<BrandContact>>(`/brandcontact/${id}`);
+    return res.data.response;
+  } catch (e) {
+    throw normalizeBubbleError(e);
+  }
+}
+
+/** ===== AGENCY UTILITIES: helper functions for agency relationships ===== */
+
+/**
+ * Check if a brand is an agency based on classification and agency-brands field
+ */
+export function isAgency(brand: BubbleThing & Brand): boolean {
+  // Check classification with case-insensitive comparison
+  const isClassificationAgency = brand.classification?.toLowerCase() === 'agency';
+  
+  // Check if it has managed brands
+  const hasManagedBrands = (brand["agency-brands"]?.length ?? 0) > 0;
+  
+  // Debug logging to understand what data we're getting
+  if (brand.classification?.toLowerCase() === 'agency') {
+    console.log('Found agency by classification:', brand.brandname, {
+      classification: brand.classification,
+      agencyBrands: brand["agency-brands"],
+      isAgency: isClassificationAgency || hasManagedBrands
+    });
+  }
+  
+  return isClassificationAgency || hasManagedBrands;
+}
+
+/**
+ * Get all brands managed by an agency
+ */
+export async function getAgencyBrands(agencyId: string): Promise<(BubbleThing & Brand)[]> {
+  try {
+    // First get the agency to get its managed brand IDs
+    const agency = await getBrandById(agencyId);
+    const brandIds = agency["agency-brands"] || [];
+    
+    if (brandIds.length === 0) {
+      return [];
+    }
+    
+    // Fetch each brand individually (similar to listInstances pattern)
+    const simpleClient = axios.create({
+      baseURL: BASE_URL,
+      timeout: 15000,
+    });
+    
+    const brandPromises = brandIds.map(id => 
+      simpleClient.get<BubbleGetResponse<Brand>>(`/brand/${id}`)
+        .then(res => res.data.response)
+        .catch(err => {
+          console.error(`Failed to fetch brand ${id}:`, err);
+          return null;
+        })
+    );
+    
+    const brands = await Promise.all(brandPromises);
+    
+    // Filter out null results and add parent agency reference
+    return brands
+      .filter((brand): brand is BubbleThing & Brand => brand !== null)
+      .map(brand => ({ ...brand, "parent-agency": agencyId }));
+  } catch (e) {
+    throw normalizeBubbleError(e);
+  }
+}
+
+/**
+ * Enhance brands list with agency relationship data
+ */
+export function enhanceBrandsWithAgencyData(brands: (BubbleThing & Brand)[]): (BubbleThing & Brand)[] {
+  // Debug: Log first few items to understand data structure
+  if (brands.length > 0) {
+    console.log('Enhancing brands data - sample items:', {
+      totalBrands: brands.length,
+      sampleBrands: brands.slice(0, 3).map(brand => ({
+        name: brand.brandname,
+        classification: brand.classification,
+        agencyBrands: brand["agency-brands"],
+        isAgency: isAgency(brand)
+      }))
+    });
+  }
+  
+  return brands.map(brand => {
+    // Add helper flags
+    const enhanced = {
+      ...brand,
+      "is-agency": isAgency(brand),
+      "brand-count": brand["agency-brands"]?.length ?? 0,
+    };
+    
+    return enhanced;
+  });
 }
 

@@ -3,8 +3,9 @@ import { useState } from 'react';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useBrands } from '@/hooks/useBrands';
-import { Brand, BubbleThing } from '@/services/bubbleAPI';
+import { Brand, BubbleThing, isAgency } from '@/services/bubbleAPI';
 import BrandCard from '@/components/brand/BrandCard';
+import AgencyCard from '@/components/agency/AgencyCard';
 import SearchBar from '@/components/common/SearchBar';
 import BrandHeader from '@/components/brand/BrandHeader';
 import EmptyState from '@/components/common/EmptyState';
@@ -13,27 +14,57 @@ import EmptyState from '@/components/common/EmptyState';
 // Classification filter options
 type ClassificationOption = 'all' | 'direct' | 'agency' | 'music';
 
-// Search and sort logic for brands
+// Search and sort logic for brands with agency awareness
 const searchAndSortBrands = (brands: (BubbleThing & Brand)[], searchQuery: string = '', classificationFilter: ClassificationOption = 'all') => {
   let filtered = [...brands];
   
   // Filter by classification first
   if (classificationFilter !== 'all') {
-    filtered = filtered.filter(item => 
-      item.classification?.toLowerCase() === classificationFilter.toLowerCase()
-    );
+    if (classificationFilter === 'agency') {
+      // Show only items with classification 'agency' or those that have agency-brands
+      filtered = filtered.filter(item => {
+        const isAgencyByClassification = item.classification?.toLowerCase() === 'agency';
+        const hasAgencyBrands = (item["agency-brands"]?.length ?? 0) > 0;
+        const result = isAgencyByClassification || hasAgencyBrands;
+        
+        // Debug logging for agencies
+        if (isAgencyByClassification) {
+          console.log('Agency filter - found agency:', item.brandname, {
+            classification: item.classification,
+            agencyBrands: item["agency-brands"],
+            included: result
+          });
+        }
+        
+        return result;
+      });
+    } else {
+      // Show only brands with matching classification that are NOT agencies
+      filtered = filtered.filter(item => 
+        !isAgency(item) && item.classification?.toLowerCase() === classificationFilter.toLowerCase()
+      );
+    }
   }
   
-  // Filter by search query (brandname only)
+  // Filter by search query (brandname and legalname)
   if (searchQuery.trim()) {
     const query = searchQuery.toLowerCase().trim();
     filtered = filtered.filter(item => 
-      item.brandname?.toLowerCase().includes(query)
+      item.brandname?.toLowerCase().includes(query) ||
+      item.legalname?.toLowerCase().includes(query)
     );
   }
   
-  // Sort alphabetically by brandname
+  // Sort: Agencies first, then brands, both alphabetically
   return filtered.sort((a, b) => {
+    const aIsAgency = isAgency(a);
+    const bIsAgency = isAgency(b);
+    
+    // If one is agency and one isn't, agency comes first
+    if (aIsAgency && !bIsAgency) return -1;
+    if (!aIsAgency && bIsAgency) return 1;
+    
+    // Both same type, sort alphabetically by brandname
     const aName = a.brandname?.toLowerCase() || '';
     const bName = b.brandname?.toLowerCase() || '';
     return aName.localeCompare(bName);
@@ -87,6 +118,20 @@ export default function BrandsScreen() {
   
   // Apply search and sorting to the data
   const filteredData = data ? searchAndSortBrands(data, searchQuery, classificationFilter) : [];
+  
+  // Debug logging for data analysis
+  if (data && classificationFilter === 'agency') {
+    const agenciesByClassification = data.filter(item => item.classification?.toLowerCase() === 'agency');
+    const itemsWithAgencyBrands = data.filter(item => (item["agency-brands"]?.length ?? 0) > 0);
+    
+    console.log('Debug - Agency filter analysis:', {
+      totalBrands: data.length,
+      agenciesByClassification: agenciesByClassification.length,
+      itemsWithAgencyBrands: itemsWithAgencyBrands.length,
+      filteredResults: filteredData.length,
+      sampleClassifications: data.slice(0, 5).map(item => ({ name: item.brandname, classification: item.classification, agencyBrands: item["agency-brands"] }))
+    });
+  }
   
   // Calculate count information for enhanced UX
   const isSearching = searchQuery.trim().length > 0;
@@ -187,9 +232,14 @@ export default function BrandsScreen() {
               colors={["#6366f1"]}
             />
           }
-          renderItem={({ item }) => (
-            <BrandCard item={item} />
-          )}
+          renderItem={({ item }) => {
+            // Use appropriate card component based on whether it's an agency
+            if (isAgency(item)) {
+              return <AgencyCard item={item} />;
+            } else {
+              return <BrandCard item={item} />;
+            }
+          }}
         />
       )}
     </ThemedView>

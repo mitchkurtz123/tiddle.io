@@ -3,7 +3,8 @@ import { StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { Brand, BubbleThing } from '@/services/bubbleAPI';
+import { IconSymbol } from '@/components/ui/IconSymbol';
+import { Brand, BubbleThing, isAgency } from '@/services/bubbleAPI';
 import { ImageWithFallback } from '@/components/shared/ImageWithFallback';
 import { ContactCount } from '@/components/shared/CountDisplay';
 import { Card } from '@/components/layout/Card';
@@ -41,11 +42,38 @@ const NicheBadges = ({ niches }: { niches?: string[] }) => {
   );
 };
 
+// Component for parent agency badge
+const ParentAgencyBadge = ({ parentAgencyId }: { parentAgencyId?: string }) => {
+  if (!parentAgencyId) return null;
+  
+  return (
+    <ThemedView style={styles.parentAgencyBadge}>
+      <IconSymbol size={10} name="building.2.fill" color="#059669" />
+      <ThemedText style={styles.parentAgencyText}>Agency Brand</ThemedText>
+    </ThemedView>
+  );
+};
+
+// Component for agency indicator badge
+const AgencyBadge = () => {
+  return (
+    <ThemedView style={styles.agencyBadge}>
+      <IconSymbol size={10} name="building.2.fill" color="#8b5cf6" />
+      <ThemedText style={styles.agencyBadgeText}>Agency</ThemedText>
+    </ThemedView>
+  );
+};
+
 export default function BrandCard({ item, onPress }: BrandCardProps) {
+  const isAgencyBrand = isAgency(item);
+  const hasParentAgency = !!item["parent-agency"];
+  
   const handlePress = () => {
-    // If custom onPress is provided, use it; otherwise navigate to detail screen
+    // If custom onPress is provided, use it; otherwise navigate to appropriate screen
     if (onPress) {
       onPress(item);
+    } else if (isAgencyBrand) {
+      router.push(`/agency/${item._id}`);
     } else {
       router.push(`/brand/${item._id}`);
     }
@@ -59,11 +87,15 @@ export default function BrandCard({ item, onPress }: BrandCardProps) {
           <ThemedText type="defaultSemiBold" style={styles.title}>
             {item.brandname ?? "(untitled)"}
           </ThemedText>
-          <NicheBadges niches={item.niche} />
+          <ThemedView style={styles.badgeContainer}>
+            {isAgencyBrand && <AgencyBadge />}
+            {hasParentAgency && <ParentAgencyBadge parentAgencyId={item["parent-agency"]} />}
+            <NicheBadges niches={item.niche} />
+          </ThemedView>
         </ThemedView>
         <ThemedView style={styles.bottomRow}>
-          <ThemedText style={styles.subtitle}>
-            {item.legalname || 'Company'}
+          <ThemedText style={[styles.subtitle, isAgencyBrand && styles.agencySubtitle]}>
+            {item.legalname || (isAgencyBrand ? 'Agency' : 'Company')}
           </ThemedText>
           <ContactCount count={item["contact-count"]} style={styles.contactCount} textStyle={styles.contactCountText} />
         </ThemedView>
@@ -111,8 +143,13 @@ const styles = StyleSheet.create({
   titleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 8,
+  },
+  badgeContainer: {
+    flexDirection: 'column',
+    alignItems: 'flex-end',
+    gap: 4,
   },
   title: {
     fontSize: 17,
@@ -129,6 +166,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6366f1', // Purple color matching tab icons
     fontWeight: '500',
+  },
+  agencySubtitle: {
+    color: '#8b5cf6', // Purple color for agencies
   },
   contactCount: {
     // Styling for ContactCount component
@@ -150,5 +190,41 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
     color: '#3730a3',
     lineHeight: 14,
+  },
+  parentAgencyBadge: {
+    backgroundColor: 'rgba(5, 150, 105, 0.1)',
+    borderColor: 'rgba(5, 150, 105, 0.3)',
+    borderWidth: 1,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  parentAgencyText: {
+    fontSize: 8,
+    fontWeight: '600',
+    letterSpacing: 0.2,
+    color: '#047857',
+    lineHeight: 12,
+  },
+  agencyBadge: {
+    backgroundColor: 'rgba(139, 92, 246, 0.1)',
+    borderColor: 'rgba(139, 92, 246, 0.3)',
+    borderWidth: 1,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  agencyBadgeText: {
+    fontSize: 8,
+    fontWeight: '600',
+    letterSpacing: 0.2,
+    color: '#6d28d9',
+    lineHeight: 12,
   },
 });

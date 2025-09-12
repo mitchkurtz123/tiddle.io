@@ -248,3 +248,28 @@ The brand deal detail screen includes sophisticated instance management capabili
 - **Pull-to-Refresh**: Native refresh controls with loading states and error handling
 - **Theme-Aware**: All components automatically adapt to light/dark mode preferences
 - **Haptic Feedback**: iOS haptic feedback integration for enhanced user experience
+
+## Recent Changes
+
+### Brand Contacts & Details Feature (Latest)
+- **Brand Detail Screen**: New `/app/brand/[id].tsx` with tabbed navigation (Overview, Contacts, Campaigns)
+- **Brand Contacts Integration**: Full integration with existing `/brandcontact` API endpoint and React Query hooks
+- **Brand Detail Components**: Created comprehensive brand detail system:
+  - `BrandDetailHeader`: Brand header with contact/campaign counts and proper navigation
+  - `BrandOverviewSection` & `BrandOverviewCard`: Detailed brand information display
+  - `BrandStatsCard`: Quick stats including contact count, days active, team size, revenue
+  - `BrandContactsSection`: Lists brand contacts using existing ContactCard component
+- **Navigation Updates**: Enhanced BrandCard navigation to route brands to `/brand/[id]` and agencies to `/agency/[id]`
+- **UI Consistency**: Brand details use green theme (#10b981) vs agency purple theme (#8b5cf6)
+
+### Agency Management System Enhancement
+- **Agency Detail Refactoring**: Complete refactor of agency detail page with tabbed navigation
+- **Agency Components**: Enhanced agency system with:
+  - `AgencyHeader`: Streamlined header without action buttons
+  - `AgencyBillingCard`: Comprehensive billing info with Stripe integration and copy-to-clipboard
+  - `AgencyStatsCard`: Quick stats dashboard with financial metrics
+  - `AgencyOverviewCard`: Detailed agency information with clickable links
+- **Tabbed Interface**: Added SegmentedControl for Overview, Brands, Contacts, Billing tabs
+- **Brand Interface Enhancement**: Extended Brand TypeScript type with comprehensive billing fields
+- **Error Fixes**: Resolved Unicode escape sequence errors in agency components
+- **Dependency Management**: Added expo-clipboard package for copy functionality

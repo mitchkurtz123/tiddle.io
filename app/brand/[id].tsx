@@ -24,7 +24,13 @@ export default function BrandDetailScreen() {
   const { data: allBrands, isLoading: allBrandsLoading, error: allBrandsError } = useBrands();
   
   // Fetch brand contacts
-  const { data: brandContacts, isLoading: contactsLoading } = useBrandContacts(id);
+  console.log('🔍 Brand detail screen - brandId from URL:', id);
+  const { data: brandContacts, isLoading: contactsLoading, error: contactsError } = useBrandContacts(id);
+  console.log('🔍 Brand contacts hook result:', {
+    brandContacts: brandContacts?.length || 0,
+    contactsLoading,
+    contactsError: contactsError?.message
+  });
   
   // Find the brand in the brands list
   const brand = allBrands?.find(b => b._id === id);

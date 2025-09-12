@@ -50,6 +50,10 @@ export type BrandDeal = {
   "created by"?: string; // User ID reference (matches Bubble field name)
   brandname?: string; // Denormalized brand name for instant display
   "user-list"?: string[]; // Array of user IDs associated with this branddeal
+  deliverables?: string; // Campaign deliverables description
+  brand?: string; // Brand ID reference
+  "brand-contacts"?: string[]; // Array of brand contact IDs
+  agency?: string; // Agency ID reference (if campaign is through agency)
   // add more fields as needed from your Bubble branddeal datatype
 };
 
@@ -111,6 +115,7 @@ export type Brand = {
   // Computed helper fields
   "brand-count"?: number; // For agencies: count of managed brands
   "is-agency"?: boolean; // Helper flag for quick agency identification
+  hide?: string; // Hide flag to filter out hidden brands
   // add more fields as needed from your Bubble brand datatype
 };
 
@@ -123,13 +128,14 @@ export type BrandContact = {
   title?: string; // Official job title
   
   // Relationship fields
-  "brand-id"?: string; // Brand this contact belongs to
+  brand?: string; // Brand this contact belongs to
   "agency-id"?: string; // Agency this contact works for (if applicable)
+  "agency-brands"?: string[]; // Array of agency brand IDs this contact is linked to
   
   // Status and metadata
   status?: 'active' | 'inactive' | 'archived'; // Contact status
   "is-primary"?: boolean; // Primary contact flag
-  avatar?: string; // URL to contact photo
+  profileimage?: string; // URL to contact photo
   notes?: string; // Additional notes about contact
   "last-contacted"?: string; // Last contact date
   "created-by"?: string; // User ID reference
@@ -455,6 +461,59 @@ export async function createInstance({
   }
 }
 
+/** ===== CREATE BRANDDEAL: workflow endpoint for creating new branddeals ===== */
+
+/**
+ * Create a new branddeal/campaign using the workflow endpoint
+ */
+export async function createBranddeal({
+  title,
+  deliverables,
+  kabanStatus,
+  brand,
+  brandContacts,
+  agency,
+}: {
+  title: string;
+  deliverables?: string;
+  kabanStatus: string;
+  brand: string;
+  brandContacts?: string[];
+  agency?: string;
+}): Promise<any> {
+  try {
+    console.log('Creating branddeal with data:', {
+      title,
+      deliverables,
+      kabanStatus,
+      brand,
+      brandContacts,
+      agency,
+    });
+
+    // Create simple axios instance (no headers, no auth)
+    const simpleClient = axios.create({
+      baseURL: WF_BASE,
+      timeout: 15000,
+    });
+
+    const res = await simpleClient.post('/create-branddeal', {
+      title,
+      deliverables,
+      "kaban-status": kabanStatus,
+      brand,
+      "brand-contacts": brandContacts,
+      agency,
+    });
+
+    console.log('Branddeal created successfully:', res.data);
+    return res.data;
+  } catch (e) {
+    console.error('Error creating branddeal:', e);
+    throw normalizeBubbleError(e);
+  }
+}
+
 /** ===== UPDATE INSTANCE: workflow endpoint for updating existing instances ===== */
 
 /**
@@ -515,7 +574,7 @@ export async function updateInstance({
  * Clean, simple version that loads all available brands.
  */
 export async function listBrands(
-  limit: number = 100,
+  limit: number = 1000,
   cursor: number = 0
 ): Promise<{
   results: (BubbleThing & Brand)[];
@@ -531,10 +590,15 @@ export async function listBrands(
       // No headers at all - just like Postman
     });
     
-    // Simple GET request to /brand endpoint without constraints
-    const res = await simpleClient.get<BubbleListResponse<Brand>>("/brand", {
-      params: { limit, cursor },
-    });
+    // Build constraints to only show non-hidden brands
+    const constraints = encodeConstraints([
+      { key: "hide", constraint_type: "equals", value: "no" },
+    ]);
+    
+    // Manually construct full URL with constraints - bypass axios params handling
+    const fullURL = `/brand?constraints=${constraints}&limit=${limit}&cursor=${cursor}`;
+    
+    const res = await simpleClient.get<BubbleListResponse<Brand>>(fullURL);
     
     const r = res.data?.response ?? {};
     return {
@@ -548,10 +612,36 @@ export async function listBrands(
   }
 }
 
+/**
+ * Fetch ALL brands using auto-pagination to handle 400+ brands.
+ * Automatically makes multiple API calls to get all brands since Bubble has 100 item limit.
+ */
+export async function listAllBrands(): Promise<(BubbleThing & Brand)[]> {
+  let allBrands: (BubbleThing & Brand)[] = [];
+  let cursor = 0;
+  let hasMore = true;
+  
+  while (hasMore) {
+    console.log(`Fetching brands batch starting at cursor ${cursor}...`);
+    const response = await listBrands(100, cursor); // Use Bubble's max limit of 100
+    
+    allBrands = [...allBrands, ...response.results];
+    
+    // Check if there are more brands to fetch
+    hasMore = response.remaining > 0;
+    cursor += response.results.length;
+    
+    console.log(`Fetched ${response.results.length} brands, total so far: ${allBrands.length}, remaining: ${response.remaining}`);
+  }
+  
+  console.log(`Finished fetching all brands: ${allBrands.length} total`);
+  return enhanceBrandsWithAgencyData(allBrands);
+}
+
 /** Convenience helper if you only care about the array (no pagination meta) */
-export async function listBrandsSimple(limit = 100, cursor = 0) {
-  const { results } = await listBrands(limit, cursor);
-  return enhanceBrandsWithAgencyData(results);
+export async function listBrandsSimple() {
+  // Always fetches ALL brands using auto-pagination
+  return listAllBrands();
 }
 
 /** Get a single brand by Bubble unique id */
@@ -580,6 +670,8 @@ export async function listBrandContacts(
   count: number;
 }> {
   try {
+    console.log('🔍 listBrandContacts called with:', { limit, cursor, brandId });
+    
     const simpleClient = axios.create({
       baseURL: BASE_URL,
       timeout: 15000,
@@ -588,23 +680,80 @@ export async function listBrandContacts(
     let constraints;
     if (brandId) {
       constraints = encodeConstraints([
-        { key: "brand-id", constraint_type: "equals", value: brandId },
+        { key: "brand", constraint_type: "equals", value: brandId },
       ]);
+      console.log('🔍 Generated constraints:', constraints);
     }
     
     const url = constraints ? `/brandcontact?constraints=${constraints}&limit=${limit}&cursor=${cursor}` : `/brandcontact?limit=${limit}&cursor=${cursor}`;
+    console.log('🔍 Full API URL:', `${BASE_URL}${url}`);
+    
     const res = await simpleClient.get<BubbleListResponse<BrandContact>>(url);
+    console.log('🔍 API Response status:', res.status);
+    console.log('🔍 API Response data structure:', {
+      hasResponse: !!res.data?.response,
+      hasResults: !!res.data?.response?.results,
+      resultCount: res.data?.response?.results?.length || 0,
+      cursor: res.data?.response?.cursor,
+      remaining: res.data?.response?.remaining
+    });
+    
+    if (res.data?.response?.results && res.data.response.results.length > 0) {
+      console.log('🔍 Sample contact:', res.data.response.results[0]);
+    }
     
     const r = res.data?.response ?? {};
-    return {
+    const result = {
       results: r.results ?? [],
       cursor: r.cursor ?? 0,
       remaining: r.remaining ?? 0,
       count: r.count ?? (r.results?.length ?? 0),
     };
+    
+    console.log('🔍 Returning result:', {
+      resultCount: result.results.length,
+      cursor: result.cursor,
+      remaining: result.remaining,
+      count: result.count
+    });
+    
+    return result;
   } catch (e) {
+    console.error('🔍 listBrandContacts error:', e);
+    console.error('🔍 Error details:', {
+      message: (e as any)?.message,
+      status: (e as any)?.response?.status,
+      statusText: (e as any)?.response?.statusText,
+      responseData: (e as any)?.response?.data
+    });
     throw normalizeBubbleError(e);
   }
+}
+
+/**
+ * Fetch ALL brand contacts using auto-pagination to handle large contact lists.
+ * Automatically makes multiple API calls to get all contacts since Bubble has 100 item limit.
+ */
+export async function listAllBrandContacts(): Promise<(BubbleThing & BrandContact)[]> {
+  let allContacts: (BubbleThing & BrandContact)[] = [];
+  let cursor = 0;
+  let hasMore = true;
+  
+  while (hasMore) {
+    console.log(`Fetching brand contacts batch starting at cursor ${cursor}...`);
+    const response = await listBrandContacts(100, cursor); // Use Bubble's max limit of 100
+    
+    allContacts = [...allContacts, ...response.results];
+    
+    // Check if there are more contacts to fetch
+    hasMore = response.remaining > 0;
+    cursor += response.results.length;
+    
+    console.log(`Fetched ${response.results.length} contacts, total so far: ${allContacts.length}, remaining: ${response.remaining}`);
+  }
+  
+  console.log(`Finished fetching all brand contacts: ${allContacts.length} total`);
+  return allContacts;
 }
 
 /** Convenience helper if you only care about the array (no pagination meta) */

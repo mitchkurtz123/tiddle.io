@@ -10,6 +10,7 @@ import CampaignCard from '@/components/campaign/CampaignCard';
 import SearchBar from '@/components/common/SearchBar';
 import CampaignHeader from '@/components/campaign/CampaignHeader';
 import EmptyState from '@/components/common/EmptyState';
+import CreateCampaignSheet from '@/components/campaign/CreateCampaignSheet';
 
 
 // Filter options
@@ -77,6 +78,7 @@ export default function HomeScreen() {
   const [filterBy, setFilterBy] = useState<FilterOption>('in-progress'); // Default to In Progress filter
   const [dropdownVisible, setDropdownVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showCreateCampaign, setShowCreateCampaign] = useState(false);
   
   // Apply filtering and sorting to the data
   const filteredData = data ? filterAndSortBranddeals(data, filterBy, searchQuery) : [];
@@ -119,6 +121,10 @@ export default function HomeScreen() {
     return `${filteredData.length} deals`;
   };
 
+  const handleNewCampaign = () => {
+    setShowCreateCampaign(true);
+  };
+
   if (isLoading) {
     return (
       <ThemedView style={styles.centerContainer}>
@@ -144,6 +150,7 @@ export default function HomeScreen() {
         count={getCountText()}
         filterDisplayName={getFilterDisplayName(filterBy)}
         onFilterPress={() => setDropdownVisible(true)}
+        onNewPress={handleNewCampaign}
       />
 
       {/* Filter Dropdown Modal */}
@@ -215,6 +222,12 @@ export default function HomeScreen() {
           )}
         />
       )}
+
+      {/* Create Campaign Sheet */}
+      <CreateCampaignSheet
+        visible={showCreateCampaign}
+        onClose={() => setShowCreateCampaign(false)}
+      />
     </ThemedView>
   );
 }

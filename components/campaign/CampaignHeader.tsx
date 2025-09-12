@@ -9,13 +9,15 @@ interface CampaignHeaderProps {
   count: string;
   filterDisplayName: string;
   onFilterPress: () => void;
+  onNewPress?: () => void;
 }
 
 export default function CampaignHeader({ 
   title, 
   count, 
   filterDisplayName, 
-  onFilterPress 
+  onFilterPress,
+  onNewPress
 }: CampaignHeaderProps) {
   return (
     <ThemedView style={styles.header}>
@@ -26,13 +28,21 @@ export default function CampaignHeader({
         </ThemedText>
       </ThemedView>
       
-      <TouchableOpacity style={styles.filterButton} onPress={onFilterPress}>
-        <IconSymbol size={16} name="line.3.horizontal.decrease.circle" color="#6366f1" />
-        <ThemedText style={styles.filterText}>
-          {filterDisplayName}
-        </ThemedText>
-        <IconSymbol size={12} name="chevron.down" color="#6366f1" />
-      </TouchableOpacity>
+      <ThemedView style={styles.headerActions}>
+        {onNewPress && (
+          <TouchableOpacity style={styles.newButton} onPress={onNewPress}>
+            <IconSymbol size={16} name="plus" color="white" />
+          </TouchableOpacity>
+        )}
+        
+        <TouchableOpacity style={styles.filterButton} onPress={onFilterPress}>
+          <IconSymbol size={16} name="line.3.horizontal.decrease.circle" color="#6366f1" />
+          <ThemedText style={styles.filterText}>
+            {filterDisplayName}
+          </ThemedText>
+          <IconSymbol size={12} name="chevron.down" color="#6366f1" />
+        </TouchableOpacity>
+      </ThemedView>
     </ThemedView>
   );
 }
@@ -48,6 +58,18 @@ const styles = StyleSheet.create({
   },
   headerLeft: {
     flex: 1,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  newButton: {
+    backgroundColor: '#6366f1',
+    borderRadius: 8,
+    padding: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   filterButton: {
     flexDirection: 'row',

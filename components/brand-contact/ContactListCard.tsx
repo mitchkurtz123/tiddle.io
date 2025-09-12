@@ -4,17 +4,17 @@ import { router } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { IconSymbol } from '@/components/ui/IconSymbol';
-import { BrandContact, BubbleThing } from '@/services/bubbleAPI';
 import { ImageWithFallback } from '@/components/shared/ImageWithFallback';
 import { Card } from '@/components/layout/Card';
+import { EnhancedBrandContact } from '@/hooks/useBrandContactsList';
 
-interface ContactCardProps {
-  item: BubbleThing & BrandContact;
-  onPress?: (item: BubbleThing & BrandContact) => void;
+interface ContactListCardProps {
+  item: EnhancedBrandContact;
+  onPress?: (item: EnhancedBrandContact) => void;
 }
 
 // Component for contact avatar with fallback
-const ContactAvatar = ({ contact }: { contact: BubbleThing & BrandContact }) => {
+const ContactAvatar = ({ contact }: { contact: EnhancedBrandContact }) => {
   return (
     <ImageWithFallback
       url={contact.profileimage}
@@ -58,7 +58,34 @@ const ContactStatusBadge = ({ status, isPrimary }: { status?: string; isPrimary?
   );
 };
 
-export default function ContactCard({ item, onPress }: ContactCardProps) {
+// Component for brand association display
+const BrandAssociations = ({ contact }: { contact: EnhancedBrandContact }) => {
+  return (
+    <ThemedView style={styles.brandAssociations}>
+      {/* Main brand */}
+      {contact.resolvedBrand && (
+        <ThemedView style={styles.brandInfo}>
+          <IconSymbol size={12} name="building.2.fill" color="#10b981" />
+          <ThemedText style={styles.brandText}>
+            {contact.resolvedBrand.brandname ?? 'Unknown Brand'}
+          </ThemedText>
+        </ThemedView>
+      )}
+      
+      {/* Agency brands */}
+      {contact.resolvedAgencyBrands && contact.resolvedAgencyBrands.length > 0 && (
+        <ThemedView style={styles.agencyInfo}>
+          <IconSymbol size={12} name="network" color="#8b5cf6" />
+          <ThemedText style={styles.agencyText}>
+            {contact.resolvedAgencyBrands.map(brand => brand.brandname).filter(Boolean).join(', ')}
+          </ThemedText>
+        </ThemedView>
+      )}
+    </ThemedView>
+  );
+};
+
+export default function ContactListCard({ item, onPress }: ContactListCardProps) {
   const handlePress = () => {
     // If custom onPress is provided, use it; otherwise navigate to contact detail screen
     if (onPress) {
@@ -78,6 +105,10 @@ export default function ContactCard({ item, onPress }: ContactCardProps) {
           </ThemedText>
           <ContactStatusBadge status={item.status} isPrimary={item["is-primary"]} />
         </ThemedView>
+        
+        {/* Brand associations */}
+        <BrandAssociations contact={item} />
+        
         <ThemedView style={styles.detailsColumn}>
           {item.role && (
             <ThemedText style={styles.role}>{item.role}</ThemedText>
@@ -146,6 +177,31 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 16,
     lineHeight: 20,
+    flex: 1,
+  },
+  brandAssociations: {
+    gap: 4,
+  },
+  brandInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  brandText: {
+    fontSize: 13,
+    color: '#10b981',
+    fontWeight: '600',
+    flex: 1,
+  },
+  agencyInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  agencyText: {
+    fontSize: 13,
+    color: '#8b5cf6',
+    fontWeight: '500',
     flex: 1,
   },
   role: {

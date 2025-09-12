@@ -12,7 +12,7 @@ import {
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { IconSymbol } from '@/components/ui/IconSymbol';
-import { Brand, BubbleThing, isAgency } from '@/services/bubbleAPI';
+import { Brand, BubbleThing } from '@/services/bubbleAPI';
 import { useCreateBranddeal } from '@/hooks/useCreateBranddeal';
 import BrandSearchSelector from './BrandSearchSelector';
 import ContactSelector from './ContactSelector';
@@ -162,7 +162,7 @@ export default function CreateCampaignSheet({ visible, onClose }: CreateCampaign
         selectedContact: null,
       });
       onClose();
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'Failed to create campaign. Please try again.');
     }
   };

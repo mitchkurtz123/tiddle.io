@@ -6,8 +6,8 @@ import { useBrands } from "./useBrands";
 
 /** Enhanced brand contact with resolved brand information */
 export type EnhancedBrandContact = BubbleThing & BrandContact & {
-  resolvedBrand?: Brand; // The contact's associated brand
-  resolvedAgencyBrands?: Brand[]; // Array of resolved agency brands
+  resolvedBrand?: BubbleThing & Brand; // The contact's associated brand
+  resolvedAgencyBrands?: (BubbleThing & Brand)[]; // Array of resolved agency brands
 };
 
 export function useBrandContactsList() {
@@ -35,7 +35,7 @@ export function useBrandContactsList() {
     const brandMap = brands.reduce((acc, brand) => {
       acc[brand._id] = brand;
       return acc;
-    }, {} as Record<string, Brand>);
+    }, {} as Record<string, BubbleThing & Brand>);
 
     // Enhance each contact with resolved brand information
     return contactsQuery.data.map(contact => {

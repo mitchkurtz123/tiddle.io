@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { IconSymbol } from '@/components/ui/IconSymbol';
-import { Brand, BrandContact, BubbleThing, isAgency } from '@/services/bubbleAPI';
+import { Brand, BubbleThing } from '@/services/bubbleAPI';
 import { useBrandContactsList } from '@/hooks/useBrandContactsList';
 import { ImageWithFallback } from '@/components/shared/ImageWithFallback';
 
@@ -63,7 +63,7 @@ export default function ContactSelector({
             style={styles.contactAvatar}
             fallbackText={(contact.name ?? "C").charAt(0).toUpperCase()}
             fallbackStyle={styles.avatarPlaceholder}
-            fallbackTextStyle={styles.placeholderText}
+            fallbackTextStyle={styles.avatarPlaceholderText}
           />
           <ThemedView style={styles.contactDetails}>
             <ThemedText style={styles.contactName}>
@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  placeholderText: {
+  avatarPlaceholderText: {
     color: 'white',
     fontSize: 14,
     fontWeight: 'bold',

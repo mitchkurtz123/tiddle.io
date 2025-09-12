@@ -97,37 +97,62 @@ export default function CreateCampaignSheet({ visible, onClose, editItem }: Crea
   // Populate form data when editing
   useEffect(() => {
     if (isEditMode && editItem && visible && brands && contacts) {
-      // Find the contact(s) associated with this campaign
-      const campaignContactIds = editItem["brand-contacts"] || [];
-      const campaignContact = campaignContactIds.length > 0 ? campaignContactIds[0] : null;
+      // Find the contact associated with this campaign
+      const campaignContact = editItem.brandcontact || null;
       const contactData = campaignContact ? contacts.find(contact => contact._id === campaignContact) : null;
       
-      // Determine mode based on the agency field in the campaign
+      // Debug contact selection
+      console.log('Contact Debug:', {
+        campaignContact,
+        contactFound: !!contactData,
+        contactData,
+        allContactsCount: contacts?.length,
+        contactsLoaded: !!contacts
+      });
+      
+      // Determine mode based on contact's brand vs campaign's brand
       let isAgencyMode = false;
       let selectedBrand = null;
       let selectedAgency = null;
       
-      if (editItem.agency) {
-        // Agency mode: editItem.agency exists
-        isAgencyMode = true;
-        selectedBrand = brands.find(brand => brand._id === editItem.brand) || null;
-        selectedAgency = brands.find(brand => brand._id === editItem.agency) || null;
+      // Get the campaign's brand
+      selectedBrand = brands.find(brand => brand._id === editItem.brand) || null;
+      
+      if (contactData && selectedBrand) {
+        // Compare contact's brand with campaign's brand
+        if (contactData.brand === editItem.brand) {
+          // DIRECT: Contact's brand matches campaign's brand
+          isAgencyMode = false;
+          selectedAgency = null;
+        } else {
+          // AGENCY: Contact's brand is different (it's the agency)
+          isAgencyMode = true;
+          selectedAgency = brands.find(brand => brand._id === contactData.brand) || null;
+        }
       } else {
-        // Direct mode: no agency field
-        isAgencyMode = false;
-        selectedBrand = brands.find(brand => brand._id === editItem.brand) || null;
-        selectedAgency = null;
+        // Fallback to original logic if no contact data
+        if (editItem.agency) {
+          isAgencyMode = true;
+          selectedAgency = brands.find(brand => brand._id === editItem.agency) || null;
+        } else {
+          isAgencyMode = false;
+          selectedAgency = null;
+        }
       }
       
       console.log('Edit mode resolution:', {
         campaignId: editItem._id,
         brandId: editItem.brand,
         agencyId: editItem.agency,
-        contactIds: editItem["brand-contacts"],
+        contactId: editItem.brandcontact,
+        contactBrand: contactData?.brand,
+        contactName: contactData?.name,
         selectedBrand: selectedBrand?.brandname,
         selectedAgency: selectedAgency?.brandname,
-        contactData: contactData?.name,
         isAgencyMode,
+        modeReason: contactData ? 
+          (contactData.brand === editItem.brand ? 'Direct (contact brand matches campaign)' : 'Agency (contact brand differs)') : 
+          'Fallback to campaign agency field',
         campaignContact
       });
       

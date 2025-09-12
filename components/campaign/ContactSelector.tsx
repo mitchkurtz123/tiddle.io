@@ -26,6 +26,12 @@ export default function ContactSelector({
 
   // Filter contacts based on brand/agency selection
   const availableContacts = allContacts?.filter(contact => {
+    // ALWAYS include the currently selected contact (for edit mode)
+    if (selectedContact && contact._id === selectedContact) {
+      return true;
+    }
+    
+    // Normal filtering logic
     if (isAgencyMode && selectedAgency) {
       // For agency mode, show contacts in two ways:
       // 1. Contacts directly linked to the agency (when brand field points to the agency)
@@ -38,6 +44,17 @@ export default function ContactSelector({
     }
     return false;
   }) || [];
+
+  console.log('ContactSelector Debug:', {
+    selectedContact,
+    allContactsCount: allContacts?.length,
+    availableContactsCount: availableContacts.length,
+    selectedContactInList: availableContacts.some(c => c._id === selectedContact),
+    availableContactIds: availableContacts.map(c => c._id),
+    isAgencyMode,
+    selectedBrandId: selectedBrand?._id,
+    selectedAgencyId: selectedAgency?._id
+  });
 
   const handleContactSelect = (contactId: string) => {
     if (selectedContact === contactId) {

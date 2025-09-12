@@ -52,7 +52,7 @@ export type BrandDeal = {
   "user-list"?: string[]; // Array of user IDs associated with this branddeal
   deliverables?: string; // Campaign deliverables description
   brand?: string; // Brand ID reference
-  "brand-contacts"?: string[]; // Array of brand contact IDs
+  brandcontact?: string; // Brand contact ID (singular)
   agency?: string; // Agency ID reference (if campaign is through agency)
   // add more fields as needed from your Bubble branddeal datatype
 };
